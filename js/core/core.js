@@ -23,6 +23,30 @@ exports.register = (socketIo, socket, redisInfo, reqData) => {
   })
 }
 
+exports.roomCreate = async (socketIo, socket, redisInfo, reqData) => {
+  return new Promise((resolve, reject) => {
+    //room 정보
+    let roomData = {};
+
+    //새로운 roomId 생성
+    if(!reqData.roomId){
+      //room id 생성
+      roomData.roomId = await commonFn.getRoomId();
+    }
+    //요청한 roomId로 room 생성
+    else {
+      roomData.roomId = reqData.roomId;
+    }
+
+    await syncFn.setRoom(redisInfo, roomData.roomId, roomData).catch(err => {
+      logger.error(`[ ## SYNC > SIGNAL ### ] setRoom Error ${err}`);
+    })
+   
+    //data return
+    resolve(roomData);
+  })
+}
+
 exports.roomJoin = async (socketIo, socket, redisInfo, reqData) => {
   return new Promise(async (resolve, reject) => {
     //socket id
@@ -39,35 +63,14 @@ exports.roomJoin = async (socketIo, socket, redisInfo, reqData) => {
     //응답 메시지
     let roomJoinMsg = {};
 
-    //host인 경우 방 생성
-    if(reqData.host && !reqData.roomId){
-      //새로운 roomId 생성
-      if(!reqData.roomId){
-        //room id 생성
-        roomData.roomId = await commonFn.getRoomId();
-      }
-      //요청한 roomId로 roomId 생성
-      else {
-        roomData.roomId = reqData.roomId;
-      }
+    roomData = await syncFn.getRoomDetail(redisInfo, reqData.roomId).catch(err => {
+      logger.error(`[ ## SYNC > SIGNAL ### ] getRoomDetail Error ${err}`);
+    })
 
-      await syncFn.setRoom(redisInfo, roomData.roomId, roomData).catch(err => {
-        logger.error(`[ ## SYNC > SIGNAL ### ] setRoom Error ${err}`);
-      })
+    if(!roomData){
+      resolve(false);
+      return;
     }
-    //이미 존재하는 방에 입장 하는 경우
-    else {
-      roomData = await syncFn.getRoomDetail(redisInfo, reqData.roomId).catch(err => {
-        logger.error(`[ ## SYNC > SIGNAL ### ] getRoomDetail Error ${err}`);
-      })
-
-      if(!roomData){
-        resolve(false);
-        return;
-      }
-    }
-
-    roomJoinMsg.roomId = roomData.roomId;
 
     //socket join
     socket.join(roomData.roomId);
