@@ -36,9 +36,7 @@ exports.roomJoin = async (socketIo, socket, redisInfo, reqData) => {
         })
 
         //응답 메시지
-        let roomJoinMsg = {
-            resDate: commonFn.getDate()
-        };
+        let roomJoinMsg = {};
 
         //host인 경우 방 생성
         if(reqData.host && !reqData.roomId){
@@ -149,6 +147,116 @@ exports.exitRoom = async (socketIo, socket, redisInfo, reqData) => {
 
         await syncFn.setUserInfoBySocketId(redisInfo, socketId, userData).catch(err => {
             logger.error(`[ ## SYNC > SIGNAL ### ] setUserInfoBySocketId Error ${err}`);
+        });
+
+        resolve(true);
+    })
+}
+
+exports.joinVideoRoom = async (socketIo, socket, redisInfo, reqData) => {
+    return new Promise((resolve, reject) => {
+        //socket id
+        let socketId = socket.id;
+
+        //방 정보 
+        let roomData = {};
+
+        //유저 정보
+        let userData = {};
+        
+        roomData.roomId = reqData.roomId;
+
+        //host인 경우 load balacing하여 media server url 선택
+        if(reqData.host){
+
+            //media server load balancing
+            let mediaServerUrls = await syncFn.getJanusUrls(redisInfo).catch(err => {
+                logger.error(`[ ## SYNC > SIGNAL ### ] getJanusUrls error : ${err}`);
+                resolve(false);
+                return;
+            });
+
+            let selectedUrl = '';
+            let cpuUsage = 101;
+
+            //cpu 사용량이 적은 Media Server 찾기
+            for(let i in mediaServerUrls){
+                let url = mediaServerUrls[i];
+
+                let serverStatus = await syncFn.getMediaServerInfo(redisInfo, url).catch(err => {
+                    logger.error(`[ ## SYNC > SIGNAL ### ] getJanusUrls error : ${err}`);
+                    resolve(false);
+                    return;
+                })
+                
+                if(serverStatus && (cpuUsage > serverStatus.cpu)){
+                    cpuUsage = serverStatus.cpu;
+                    selectedUrl = url;
+                } 
+            }
+
+            //Sync Server에 새로운 방 정보 등록
+            roomData.mediaServerUrl = selectedUrl;
+            
+            await syncFn.setRoom(redisInfo, roomData.roomId, roomData).catch(err => {
+                logger.error(`[ ## SYNC > SIGNAL ### ] setRoom Error ${err}`);
+                resolve(false);
+                return;
+            })
+        }
+        //이미 room이 존재 하는 경우
+        else {
+            //room data 가져오기
+            roomData = await syncFn.getRoomDetail(redisInfo, reqData.roomId).catch(err => {
+                logger.error(`[ ## SYNC > SIGNAL ### ] getRoomDetail Error ${err}`);
+                resolve(false);
+                return;
+            })
+
+            if(!roomData){
+                logger.info(`[ ## SYNC > SIGNAL ### ] There is no such room in Sync Server`);
+                resolve(false);
+                return;
+            }
+        }
+
+        //사용자 정보 조회
+        let userDataFromSync = await syncFn.getUserInfoBySocketId(redisInfo, socketId).catch(err => {
+            logger.error(`[ ## SYNC > SIGNAL ### ] getUserInfoBySocketId error : ${err}`);
+            resolve(false);
+            return;
+        })
+
+        let sessionId = userDataFromSync.sessionId?userDataFromSync.sessionId:null;
+
+        //media server room join
+        let resData = await janus_module.janusRoomJoin(roomData.mediaServerUrl, roomData.roomId, socketId, reqData.host, sessionId, redisInfo, reqData.subscribe, reqData.type).catch(err => {
+            logger.error(`[ ## JANUS > SIGNAL ## ] janusRoomJoin error : ${err}`);
+            resolve(false);
+            return;
+        })
+        
+        //Sync Server에 user 정보 등록
+        userData.socketId = socketId;
+        userData.sessionId = resData.sessionId;
+        userData.roomInfo = {}
+        userData.roomInfo[roomData.roomId] = {}
+        if(reqData.type == 'cam'){
+            userData.roomInfo[roomData.roomId] = {
+                camFeedId: resData.feedId,
+                camHandleId: resData.handleId
+            } 
+        } else {
+            userData.roomInfo[roomData.roomId] = {
+                screenFeedId: resData.feedId,
+                screenHandleId: resData.handleId
+            } 
+        }
+
+        await syncFn.setUserInfoBySocketId(redisInfo, socketId, userData).catch(err => {
+            logger.error(`[ ## SYNC > SIGNAL ### ] setUserInfo Error ${err}`);
+            resolve(false);
+            return;
         });
 
         resolve(true);

@@ -304,3 +304,29 @@ exports.getRoomCount = (redis, url) => {
 		})
 	})
 }
+
+//Media Server Url 가져오는 Method
+exports.getJanusUrls = (redis) => {
+	return new Promise((resolved, rejected) => {
+		redis.sscan(0, "match", "Media:*", (err, obj) => {
+			if(err){
+				resolved(false);
+				return;
+			}
+			resolved(obj[1]);
+		})
+	})
+}
+
+//Media Server 정보 가져오는 Method
+exports.getMediaServerInfo = (redis, url) => {
+	return new Promise((resolved, rejected) => {
+		redis.get('Media:'+url, (err, obj) => {
+			if(err){
+				resolved(false);
+				return;
+			}
+			resolved(JSON.parse(obj));
+		})
+	})
+}

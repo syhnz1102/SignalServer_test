@@ -15,12 +15,10 @@ const bitrate = 3000000;
 const VIDEOROOM_PLUGIN_ID = 'janus.plugin.videoroom';
 const RECORD_PLUGIN_ID = 'janus.plugin.recordplay';
 
-let socket;
 let transactions = {};
 let signalSocketio;
 let redisInfo;
 let janus_arr = [];
-let janusUrls;
 
 //session id를 key 값으로 websokcet 객체를 참조하는 객체
 let sockets = {};
@@ -38,10 +36,9 @@ let janusResData = {}
 let syncData = {}
 
 //초기 실행 함수 method
-exports.init = (_socket, _signalSocketio, _redisInfo) => {
+exports.init = (_signalSocketio, _redisInfo) => {
 
     //socket, redis 정보 전역변수에 저장
-    socket = _socket;
     signalSocketio = _signalSocketio;
     redisInfo = _redisInfo;
 
