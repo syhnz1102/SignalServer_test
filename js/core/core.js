@@ -39,7 +39,7 @@ exports.roomCreate = async (redisInfo, reqData) => {
       roomData = await syncFn.getRoomDetail(redisInfo, reqData.roomId).catch(err => {
         logger.error(`[ ## SYNC > SIGNAL ### ] getRoomDetail Error ${err}`);
       })
-      
+
       if(roomData){
         resolve(false);
         return;
@@ -167,11 +167,9 @@ exports.exitRoom = async (socketIo, socket, redisInfo, reqData) => {
   })
 }
 
-exports.joinVideoRoom = async (socket, redisInfo, reqData) => {
+exports.joinVideoRoom = async (socketId, redisInfo, reqData) => {
   return new Promise(async (resolve, reject) => {
-    //socket id
-    let socketId = socket.id;
-
+  
     //방 정보
     let roomData = {};
 
@@ -277,10 +275,8 @@ exports.joinVideoRoom = async (socket, redisInfo, reqData) => {
   })
 }
 
-exports.sdpVideoRoom = async (socket, redisInfo, reqData) => {
+exports.sdpVideoRoom = async (socketId, redisInfo, reqData) => {
   return new Promise(async (resolve, reject) => {
-    //socket id
-    let socketId = socket.id;
 
     //user data 가져오기
     let userData = await syncFn.getUserInfoBySocketId(redisInfo, socketId).catch(err => {
@@ -333,10 +329,8 @@ exports.sdpVideoRoom = async (socket, redisInfo, reqData) => {
   })
 }
 
-exports.receiveFeed = async (socket, reqData) => {
+exports.receiveFeed = async (socketid, reqData) => {
   return new Promise(async (resolve, reject) => {
-    //socket id
-    let socketId = socket.id;
 
     let resJanusData;
 
@@ -362,7 +356,7 @@ exports.receiveFeed = async (socket, reqData) => {
   })
 }
 
-exports.exitVideoRoom = async (socketIo, socket, redisInfo, reqData) => {
+exports.exitVideoRoom = async (socket, redisInfo, reqData) => {
   return new Promise(async (resolve, reject) => {
     //socket id
     let socketId = socket.id;
