@@ -4,7 +4,7 @@ const fn_janus = require('./janus.service');
 const janus_module = require('./janus.module');
 const logger = require('../utils/logger');
 
-exports.register = (socketIo, socket, redisInfo, reqData) => {
+exports.register = (socket, redisInfo) => {
   return new Promise(async (resolve, reject) => {
     //socket id
     let socketId = socket.id;
@@ -23,8 +23,8 @@ exports.register = (socketIo, socket, redisInfo, reqData) => {
   })
 }
 
-exports.roomCreate = async (socketIo, socket, redisInfo, reqData) => {
-  return new Promise((resolve, reject) => {
+exports.roomCreate = async (redisInfo, reqData) => {
+  return new Promise(async (resolve, reject) => {
     //room 정보
     let roomData = {};
 
@@ -35,6 +35,16 @@ exports.roomCreate = async (socketIo, socket, redisInfo, reqData) => {
     }
     //요청한 roomId로 room 생성
     else {
+
+      roomData = await syncFn.getRoomDetail(redisInfo, reqData.roomId).catch(err => {
+        logger.error(`[ ## SYNC > SIGNAL ### ] getRoomDetail Error ${err}`);
+      })
+      
+      if(roomData){
+        resolve(false);
+        return;
+      }
+
       roomData.roomId = reqData.roomId;
     }
 
@@ -121,7 +131,7 @@ exports.exitRoom = async (socketIo, socket, redisInfo, reqData) => {
     }
 
     //방 정보 가져오기
-    roomData = await syncFn.getRoomDetail(redisInfo, data.roomId).catch(err => {
+    roomData = await syncFn.getRoomDetail(redisInfo, reqData.roomId).catch(err => {
       logger.info(`[ ## SYNC > SIGNAL ### ] getRoomDetail Error ${err}`);
     });
 
@@ -132,14 +142,14 @@ exports.exitRoom = async (socketIo, socket, redisInfo, reqData) => {
       return;
     }
 
-    delete userData.roomInfo[data.roomId];
+    delete userData.roomInfo[reqData.roomId];
 
-    socket.leave(data.roomId);
+    socket.leave(reqData.roomId);
 
     //인원 수 체크 해서 sync server에서 room 정보 지우기
     let userCount = 0;
-    if(socketIo.adapter.rooms[data.roomId]){
-      userCount = socketIo.adapter.rooms[data.roomId].length;
+    if(socketIo.adapter.rooms[reqData.roomId]){
+      userCount = socketIo.adapter.rooms[reqData.roomId].length;
 
       //아무도 없으면 방 삭제
       if(userCount == 0){
@@ -157,7 +167,7 @@ exports.exitRoom = async (socketIo, socket, redisInfo, reqData) => {
   })
 }
 
-exports.joinVideoRoom = async (socketIo, socket, redisInfo, reqData) => {
+exports.joinVideoRoom = async (socket, redisInfo, reqData) => {
   return new Promise(async (resolve, reject) => {
     //socket id
     let socketId = socket.id;
@@ -267,8 +277,8 @@ exports.joinVideoRoom = async (socketIo, socket, redisInfo, reqData) => {
   })
 }
 
-exports.sdpVideoRoom = async (socketIo, socket, redisInfo, reqData) => {
-  return new Promise((resolve, reject) => {
+exports.sdpVideoRoom = async (socket, redisInfo, reqData) => {
+  return new Promise(async (resolve, reject) => {
     //socket id
     let socketId = socket.id;
 
@@ -323,8 +333,8 @@ exports.sdpVideoRoom = async (socketIo, socket, redisInfo, reqData) => {
   })
 }
 
-exports.receiveFeed = async (socketIo, socket, redisInfo, reqData) => {
-  return new Promise((resolve, reject) => {
+exports.receiveFeed = async (socket, reqData) => {
+  return new Promise(async (resolve, reject) => {
     //socket id
     let socketId = socket.id;
 
@@ -336,7 +346,7 @@ exports.receiveFeed = async (socketIo, socket, redisInfo, reqData) => {
     });
 
     //subscriber로 입장
-    resJanusData = await fn_janus.joinRoomAsSubscriber('', resJanusData.data.id, data.roomId, data.feedId, socketId).catch(err => {
+    resJanusData = await fn_janus.joinRoomAsSubscriber('', resJanusData.data.id, reqData.roomId, reqData.feedId, socketId).catch(err => {
       logger.error(`[ ## JANUS > SIGNAL ## ] joinRoomAsSubscriber : ${err}`);
     });
 
@@ -344,7 +354,7 @@ exports.receiveFeed = async (socketIo, socket, redisInfo, reqData) => {
     let resData = {
       'sdp': resJanusData.jsep,
       'pluginId': resJanusData.sender,
-      'display': data.display,
+      'display': reqData.display,
       'type': "cam"
     }
 
