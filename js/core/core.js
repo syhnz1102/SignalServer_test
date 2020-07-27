@@ -40,12 +40,15 @@ exports.roomCreate = async (redisInfo, reqData) => {
         logger.error(`[ ## SYNC > SIGNAL ### ] getRoomDetail Error ${err}`);
       })
 
-      if(!roomData){
+      //이미 room이 존재하는 경우
+      if(roomData){
         resolve(false);
         return;
+      } else {
+        roomData = {};
+        roomData.roomId = reqData.roomId;
       }
 
-      roomData.roomId = reqData.roomId;
     }
 
     await syncFn.setRoom(redisInfo, roomData.roomId, roomData).catch(err => {
