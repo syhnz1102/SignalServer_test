@@ -26,18 +26,6 @@ module.exports = (socket, signalSocketio, redisInfo) => {
       case 'StartSession':
         break;
 
-      case 'SetVideo':
-        cccService.setVideo();
-        break;
-
-      case 'SetAudio':
-        cccService.setAudio();
-        break;
-
-      case 'ChangeName':
-        cccService.changeName();
-        break;
-
       case 'SDP':
         cccService.sdp();
         break;
@@ -56,6 +44,18 @@ module.exports = (socket, signalSocketio, redisInfo) => {
 
       case 'ScreenShareConferenceEnd':
         cccService.endScreenShare();
+        break;
+
+      case 'SetVideo':
+        cccService.setVideo();
+        break;
+
+      case 'SetAudio':
+        cccService.setAudio();
+        break;
+
+      case 'ChangeName':
+        cccService.changeName();
         break;
     }
   });

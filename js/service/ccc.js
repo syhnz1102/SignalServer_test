@@ -2,6 +2,7 @@ const logger = require('../utils/logger');
 const utils = require('../utils/common');
 const { signalSocket, coreConnector } = require('../repository/sender');
 const sync = require('../repository/sync');
+const core = require('../core/core');
 
 exports.createRoom = async (data, sessionId) => {
   let room = await utils.makeId(8);
@@ -29,7 +30,8 @@ exports.roomJoin = async (data, sessionId, redis, socket) => {
   const uid = await utils.makeId();
   logger.log('info', `[Socket : RoomJoin Event] ${uid} User RoomJoin, Session Id is : ${sessionId}, Room Id : ${data.roomId}`);
 
-  // Room Join
+  // await core.register({  });
+  // await core.roomJoin({ roomId: data.roomId });
   let previous = await sync.getRoom(redis, data.roomId);
   if (!previous) {
     // Room 없거나 Error 시
@@ -41,8 +43,7 @@ exports.roomJoin = async (data, sessionId, redis, socket) => {
     }, data);
   } else {
     // Room 있는 경우
-    socket.join(data.roomId);
-    syncFn.setUserInfo(redisInfo, uid, sessionId, 'multi', 'ccc');
+    sync.setUserInfo(redis, uid, sessionId, 'multi', 'ccc');
     let enteredRoomInfo = await syncFn.cccEnterRoom(redisInfo, {uid, sessionId, roomId: data.roomId, userName: 'unknown'});
 
     signalSocket.emit(sessionId, {
@@ -52,7 +53,7 @@ exports.roomJoin = async (data, sessionId, redis, socket) => {
       userId: uid,
       members: enteredRoomInfo.USERS,
       roomId: data.roomId,
-      serverInfo: commonFn.serverInfo.getTurn()
+      // serverInfo: commonFn.serverInfo.getTurn()
     }, data);
 
     if (enteredRoomInfo.MULTITYPE === 'N') {
@@ -133,35 +134,77 @@ exports.roomJoin = async (data, sessionId, redis, socket) => {
   }
 }
 
-exports.sdp = async () => {
+exports.sdp = async (data, sessionId, redis, socket) => {
+  const roomInfo = await sync.getRoom(redis, data.roomId);
+  if (roomInfo.MULTITYPE && roomInfo.MULTITYPE === 'N') {
+    // await core.sdp();
+    data.useMediaSvr = 'N';
+    signalSocket.broadcast(socket, data.roomId, data);
+  } else {
+    if (data.code === '200') return false;
+
+    signalSocket.emit(sessionId, {
+      'eventOp': data.eventOp,
+      'reqNo': data.reqNo,
+      'code': "200",
+      'roomId': data.roomId,
+      'message': 'OK'
+    }, data);
+
+    try {
+      let sdp_to_json = sjj.toSessionJSON(data.sdp.sdp, {
+        creators: ['initiator', 'initiator'],
+        role: 'initiator',
+        direction: 'outgoing'
+      })
+
+      let ufrag = sdp_to_json.contents[0].transport.ufrag;
+      let janus_url = await syncFn.getJanusServerByRoomId(redisInfo, data.roomId);
+
+      if (data.sdp.type === 'offer') {
+        let socket_data_from_redis = await syncFn.getUserSocketInfo(redisInfo, sessionId);
+        let videoRoomPluginId = socket_data_from_redis['JANUS_PUBLISHER_PLUGIN_ID'];
+
+        await syncFn.setSdpUfragToJanusVideoPluginId(redisInfo, {ufrag: ufrag, videoRoomPluginId: videoRoomPluginId})
+        let _data = {
+          socketio_session_id: sessionId,
+          ufrag: ufrag,
+          janus_plugin_id: videoRoomPluginId,
+          usage: data.usage
+        }
+        await syncFn.setJanusPluginInfo(redisInfo, _data);
+
+        await fn_janus.sendOffer(janus_url, videoRoomPluginId, data.sdp, true);
+      } else { // SDP ANSWER
+        let videoRoomPluginId = sessionDataFromRedis['QUEUING_JANUS_PLUGIN_ID'];
+        data.pluginIdFromRedis = videoRoomPluginId;
+
+        fn_janus.processSDPOfferQueue(sessionId, sessionDataFromRedis.ROOM_ID);
+
+        await syncFn.setSdpUfragToJanusVideoPluginId(redisInfo, {ufrag: ufrag, videoRoomPluginId: videoRoomPluginId});
+        let janusRoomId = await syncFn.getJanusRoomId(redisInfo, data.roomId);
+
+        let _data = {
+          sdp: data.sdp,
+          janusRoomId: janusRoomId,
+          videoRoomPluginId: videoRoomPluginId
+        };
+        // setTimeout(() => {
+        //     fn_janus.sendAnswerAndStartRemoteVideo(janus_url, _data)
+        // }, 1500);
+        await fn_janus.sendAnswerAndStartRemoteVideo(janus_url, _data);
+      }
+
+    } catch (err) {
+      console.log("SDP ERROR OCCURRED.", err);
+    }
+
+
+  }
+
   // if (data.usage === 'cam') {
   //   syncFn.getRoom(redisInfo, data.roomId).then(async function (roomResult) {
-  //     if (roomResult.MULTITYPE && roomResult.MULTITYPE === 'N') {
-  //       if (data.sdp) {
-  //         if (!data.userId) {
-  //           console.log('userId false, --> Guest');
-  //           data.userId = 'Guest';
-  //         }
-  //
-  //         data.useMediaSvr = 'N';
-  //         commonFn.reqNo().then(function (reqResult) {
-  //           syncFn.msgManager.save(redisInfo, data, reqResult, sessionId, pid).then(function () {
-  //             data.reqNo = reqResult;
-  //             signalSocket.broadcast(socket, data.roomId, data);
-  //           });
-  //         }).catch(function () {
-  //           console.log('error');
-  //         });
-  //       } else {
-  //         syncFn.msgManager.load(redisInfo, data, sessionId, pid).then(function (respObj) {
-  //           data.reqNo = respObj.reqNo;
-  //           data.userId = respObj.userId;
-  //           data.message = 'OK';
-  //           signalSocket.broadcast(socket, data.roomId, data);
-  //           // logger.log('info', `[Socket : ' ${data.eventOp} ' Event / 다자간 화상회의] *\n* 현재 처리중 방향 : [Signal -> App (Resp)] *\n* eventOp : ' ${data.eventOp} ' *\n SDP 요청에 대한 response \n App으로 전달할 Data : ', ${JSON.stringify(data)}`);
-  //         });
-  //       }
-  //     } else {
+  //   else {
   //       if (data.code === '200') {
   //         return false;
   //       }
