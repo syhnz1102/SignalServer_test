@@ -263,3 +263,59 @@ exports.joinVideoRoom = async (socketIo, socket, redisInfo, reqData) => {
     resolve(true);
   })
 }
+
+exports.sdpVideoRoom = async (socketIo, socket, redisInfo, reqData) => {
+  return new Promise((resolve, reject) => {
+    //socket id
+    let socketId = socket.id;
+
+    //user data 가져오기
+    let userData = await syncFn.getUserInfoBySocketId(redisInfo, socketId).catch(err => {
+      logger.error(`[ ## SYNC > SIGNAL ### ] getUserInfoBySocketId Error ${err}`);
+      resolve(false);
+      return;
+    });
+
+    //handle id 
+    let handleId; 
+
+    //camera / screen 구분해서 handleId 가져오기
+    if(reqData.type == 'cam'){
+      handleId = userData.roomInfo[reqData.roomId].camHandleId;
+    } else {
+      handleId = userData.roomInfo[reqData.roomId].screenHandleId;
+    }
+    
+    let roomData = await syncFn.getRoomDetail(redisInfo, reqData.roomId).catch(err => {
+      logger.error(`[ ## SYNC > SIGNAL ### ] getRoomDetail Error ${err}`);
+      resolve(false);
+      return;
+    })
+
+    let janusResData = {};
+
+    let sendData = {}
+
+    if(reqData.sdp.type == 'offer' || reqData.sdp.type == 'OFFER'){
+      janusResData[socketId] = await fn_janus.sendOffer(roomData.mediaServerUrl, handleId, reqData.sdp, true, socketId).catch(err => {
+        logger.error(`[ ## JANUS > SIGNAL ## ] sendOffer : ${err}`);
+        delete janusResData[socketId];
+        resolve(false);
+        return;
+      });
+
+      sendData.sdp = janusResData[socketId].jsep;
+        
+      resolve(sendData);
+    } else if (reqData.sdp.type == 'answer' || reqData.sdp.type == 'ANSWER') {
+      janusResData[socketId] = await fn_janus.sendAnswerForSubscriber(roomData.mediaServerUrl, reqData.pluginId, roomData.roomId, reqData.sdp, socketId).catch(err => {
+        logger.error(`[ ## JANUS > SIGNAL ## ] sendAnswerForSubscriber : ${err}`);
+        delete janusResData[socketId];
+        resolve(false);
+        return;
+      });
+
+      resolve(true);
+    }
+  })
+}
