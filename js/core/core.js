@@ -171,12 +171,20 @@ exports.joinVideoRoom = async (socketId, redisInfo, reqData) => {
   return new Promise(async (resolve, reject) => {
   
     //방 정보
-    let roomData = {};
+    let roomData = await syncFn.getRoomDetail(redisInfo, reqData.roomId).catch(err => {
+      logger.error(`[ ## SYNC > SIGNAL ### ] getRoomDetail error : ${err}`);
+      resolve(false);
+      return;
+    })
+
+    if(!roomData){
+      logger.info(`[ ## SYNC > SIGNAL ### ] There is no such room in Sync Server`);
+      resolve(false);
+      return;
+    }
 
     //유저 정보
     let userData = {};
-
-    roomData.roomId = reqData.roomId;
 
     //host인 경우 load balacing하여 media server url 선택
     if(reqData.host){
@@ -215,21 +223,6 @@ exports.joinVideoRoom = async (socketId, redisInfo, reqData) => {
         resolve(false);
         return;
       })
-    }
-    //이미 room이 존재 하는 경우
-    else {
-      //room data 가져오기
-      roomData = await syncFn.getRoomDetail(redisInfo, reqData.roomId).catch(err => {
-        logger.error(`[ ## SYNC > SIGNAL ### ] getRoomDetail Error ${err}`);
-        resolve(false);
-        return;
-      })
-
-      if(!roomData){
-        logger.info(`[ ## SYNC > SIGNAL ### ] There is no such room in Sync Server`);
-        resolve(false);
-        return;
-      }
     }
 
     //사용자 정보 조회
