@@ -319,3 +319,32 @@ exports.sdpVideoRoom = async (socketIo, socket, redisInfo, reqData) => {
     }
   })
 }
+
+exports.receiveFeed = async (socketIo, socket, redisInfo, reqData) => {
+  return new Promise((resolve, reject) => {
+    //socket id
+    let socketId = socket.id;
+
+    let resJanusData;
+
+    //plugin 생성
+    resJanusData = await fn_janus.attachVideoRoomPlugin('', socketId).catch(err => {
+      logger.error(`[ ## JANUS > SIGNAL ## ] attachVideoRoomPlugin : ${err}`);
+    });
+
+    //subscriber로 입장
+    resJanusData = await fn_janus.joinRoomAsSubscriber('', resJanusData.data.id, data.roomId, data.feedId, socketId).catch(err => {
+      logger.error(`[ ## JANUS > SIGNAL ## ] joinRoomAsSubscriber : ${err}`);
+    });
+
+    //TODO(type) sdp offer client로 전달
+    let resData = {
+      'sdp': resJanusData.jsep,
+      'pluginId': resJanusData.sender,
+      'display': data.display,
+      'type': "cam"
+    }
+
+    resolve(resData);
+  })
+}
