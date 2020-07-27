@@ -87,6 +87,7 @@ exports.roomJoin = async (socketIo, socket, redisInfo, reqData) => {
     })
 
     if(!roomData){
+      logger.info(`[ ## SYNC > SIGNAL ### ] There is no such room in Sync Server`);
       resolve(false);
       return;
     }
