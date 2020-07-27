@@ -226,13 +226,13 @@ exports.joinVideoRoom = async (socketId, redisInfo, reqData) => {
     }
 
     //사용자 정보 조회
-    let userDataFromSync = await syncFn.getUserInfoBySocketId(redisInfo, socketId).catch(err => {
+    userData = await syncFn.getUserInfoBySocketId(redisInfo, socketId).catch(err => {
       logger.error(`[ ## SYNC > SIGNAL ### ] getUserInfoBySocketId error : ${err}`);
       resolve(false);
       return;
     })
 
-    let sessionId = userDataFromSync.sessionId?userDataFromSync.sessionId:null;
+    let sessionId = userData.sessionId?userData.sessionId:null;
 
     //media server room join
     let resData = await janus_module.janusRoomJoin(roomData.mediaServerUrl, roomData.roomId, socketId, reqData.host, sessionId, redisInfo, reqData.subscribe, reqData.type).catch(err => {
