@@ -40,7 +40,7 @@ exports.roomCreate = async (redisInfo, reqData) => {
         logger.error(`[ ## SYNC > SIGNAL ### ] getRoomDetail Error ${err}`);
       })
 
-      if(roomData){
+      if(!roomData){
         resolve(false);
         return;
       }
