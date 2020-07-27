@@ -73,6 +73,12 @@ exports.roomJoin = async (socketIo, socket, redisInfo, reqData) => {
       logger.error(`[ ## SYNC > SIGNAL ### ] getUserInfoBySocketId Error ${err}`);
     })
 
+    if(!userData){
+      logger.info(`[ ## SYNC > SIGNAL ### ] There is no such user in Sync Server`);
+      resolve(false);
+      return;
+    }
+
     //응답 메시지
     let roomJoinMsg = {};
 
