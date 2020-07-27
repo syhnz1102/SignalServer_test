@@ -348,3 +348,148 @@ exports.receiveFeed = async (socketIo, socket, redisInfo, reqData) => {
     resolve(resData);
   })
 }
+
+exports.exitVideoRoom = async (socketIo, socket, redisInfo, reqData) => {
+  return new Promise(async (resolve, reject) => {
+    //socket id
+    let socketId = socket.id;
+
+    //유저 정보
+    let userData = {};
+
+    //room 정보
+    let roomData = {};
+    
+    //socket id로 user 정보 가져오기
+    userData = await syncFn.getUserInfoBySocketId(redisInfo, socketId).catch(err => {
+        logger.error(`[ ## SYNC > SIGNAL ### ] getUserInfoBySocketId Error ${err}`);
+    });
+    
+    //유저 정보가 없을 시 바로 종료
+    if(!userData){
+        logger.info(`[ ## SYNC > SIGNAL ### ] There is no such user in Sync Server`);
+        resolve(false);
+        return;
+    }
+
+    //화면 공유 종료 일때
+    if(reqData && reqData.type && reqData.type == 'screen'){
+        let screenHandleId = userData.roomInfo[reqData.roomId].screenHandleId;
+
+        //handleId 정보 삭제
+        await syncFn.delUserInfoByHandleId(redisInfo, screenHandleId).catch(err => {
+            logger.error(`[ ## SYNC > SIGNAL ### ] delUserInfoByHandleId Error ${err}`);
+        });
+
+        userData.roomInfo[reqData.roomId].screenHandleId = '';
+        userData.roomInfo[reqData.roomId].screenFeedId = '';
+
+        await syncFn.setUserInfoBySocketId(redisInfo, socketId, userData).catch(err => {
+            logger.error(`[ ## SYNC > SIGNAL ### ] setUserInfoBySocketId Error ${err}`);
+        });
+    } 
+    //특정한 방에서 퇴장 요청 일때
+    else if(reqData){
+        
+        //Sync Server에서 정보 가져오기
+        roomData = await syncFn.getRoomDetail(redisInfo, reqData.roomId).catch(err => {
+            logger.error(`[ ## SYNC > SIGNAL ### ] getRoomDetail Error ${err}`);
+        })
+
+        if(!roomData){
+            logger.info(`[ ## SYNC > SIGNAL ### ] There is no such room in Sync Server`);
+            resolve(false);
+            return;
+        }
+
+        //현재 인원 수 체크
+        let userCount = 0;
+        
+        //Media Server videoroom 퇴장
+        await fn_janus.leaveRoomAsPublisher(roomData.mediaServerUrl, userData.roomInfo[reqData.roomId].camHandleId, reqData.roomId, socketId).catch(err => {
+          logger.error(`[ ## JANUS > SIGNAL ## ] leaveRoomAsPublisher : ${err}`);
+        });
+
+        //Media Server videoroom 참가자 인원 조회
+        let list = await fn_janus.listParticipants(roomData.mediaServerUrl, userData.roomInfo[reqData.roomId].camHandleId, socketId, reqData.roomId).catch(err => {
+          logger.error(`[ ## JANUS > SIGNAL ## ] listParticipants : ${err}`);
+        })
+
+        userCount = (list && list.plugindata.data.participants)? list.plugindata.data.participants.length : 0;
+        
+        if(userCount < 1){
+          //Sync Server에서 room 정보 삭제
+          delete roomData["mediaServerUrl"];
+          await syncFn.setRoom(redisInfo, roomData.roomId, roomData).catch(err => {
+              logger.error(`[ ## SYNC > SIGNAL ### ] delRoom Error ${err}`);
+          });
+          
+          //Media Server에 room 삭제
+          await fn_janus.destroyRoom(roomData.mediaServerUrl, userData.roomInfo[reqData.roomId].camHandleId, roomData.roomId, socketId).catch(err => {
+              logger.error(`[ ## JANUS > SIGNAL ## ] destroyRoom : ${err}`);
+          })
+        }
+
+        //유저 정보에서 특정 방 삭제
+        await syncFn.delUserInfoByHandleId(redisInfo, userData.roomInfo[reqData.roomId].camHandleId).catch(err => {
+          logger.error(`[ ## SYNC > SIGNAL ### ] delUserInfoByHandleId Error ${err}`);
+        });
+
+        delete userData.roomInfo[reqData.roomId];
+        await syncFn.setUserInfoBySocketId(redisInfo, socketId, userData).catch(err => {
+          logger.error(`[ ## SYNC > SIGNAL ### ] setUserInfoBySocketId Error ${err}`);
+        });
+    }
+    //비정상 종료이면 모든 방에서 퇴장
+    else {
+        if(userData.roomInfo){
+          Object.keys(userData.roomInfo).map(async (roomId) => {
+            //Sync Server에서 정보 가져오기
+            roomData = await syncFn.getRoomDetail(redisInfo, roomId).catch(err => {
+                logger.error(`[ ## SYNC > SIGNAL ### ] getRoomDetail Error ${err}`);
+            })
+
+            //TODO 방 정보가 없을 시 바로 종료
+            if(!roomData){
+                logger.info(`[ ## SYNC > SIGNAL ### ] There is no such room in Sync Server`);
+                resolve(false);
+                return;
+            }
+
+            //현재 인원 수 체크
+            let userCount = 0;
+            
+            //media server video room 퇴장
+            await fn_janus.leaveRoomAsPublisher(roomData.mediaServerUrl, userData.roomInfo[roomId].camHandleId, roomId, socketId).catch(err => {
+                logger.error(`[ ## JANUS > SIGNAL ## ] leaveRoomAsPublisher : ${err}`);
+            });
+
+            let list = await fn_janus.listParticipants(roomData.mediaServerUrl, userData.roomInfo[roomId].camHandleId, socketId, roomId).catch(err => {
+                logger.error(`[ ## JANUS > SIGNAL ## ] listParticipants : ${err}`);
+            })
+
+            userCount = (list && list.plugindata.data.participants)? list.plugindata.data.participants.length : 0;
+            
+            if(userCount < 1){
+                await syncFn.delRoom(redisInfo, roomData.roomId).catch(err => {
+                    logger.error(`[ ## SYNC > SIGNAL ### ] delRoom Error ${err}`);
+                })
+            }
+
+            socket.leave(roomData.roomId);
+
+          })
+        }
+
+        //user 정보 삭제
+        await syncFn.delUserInfo(redisInfo, socketId).catch(err => {
+            logger.error(`[ ## SYNC > SIGNAL ### ] delUserInfo Error ${err}`);
+        });
+
+        //Signal <-> Media Websocket disconnection
+        fn_janus.deleteSocket(socketId);
+
+    }
+    resolve(true);
+  })
+}
