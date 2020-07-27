@@ -3,8 +3,11 @@ const syncFn = require('./sync.service');
 const fn_janus = require('./janus.service');
 const janus_module = require('./janus.module');
 
-exports.register = (socket, redisInfo, socketId, reqData) => {
+exports.register = (socketIo, socket, redisInfo, reqData) => {
     return new Promise((resolve, reject) => {
+        //socket id
+        let socketId = socket.id;
+
         //유저 정보
         let userData = {};
 
@@ -19,8 +22,11 @@ exports.register = (socket, redisInfo, socketId, reqData) => {
     })
 }
 
-exports.roomJoin = async (socket, redisInfo, socketId, reqData) => {
+exports.roomJoin = async (socketIo, socket, redisInfo, reqData) => {
     return new Promise((resolve, reject) => {
+        //socket id
+        let socketId = socket.id;
+
         //room 정보
         let roomData = {};
 
@@ -77,8 +83,8 @@ exports.roomJoin = async (socket, redisInfo, socketId, reqData) => {
         
         //현재 socket room 인원
         let userCount = 0;
-        if(signalSocketio.adapter.rooms[roomData.roomId]){
-            userCount = signalSocketio.adapter.rooms[roomData.roomId].length
+        if(socketIo.adapter.rooms[roomData.roomId]){
+            userCount = socketIo.adapter.rooms[roomData.roomId].length
         } 
 
         //응답 메시지에 인원수 추가
