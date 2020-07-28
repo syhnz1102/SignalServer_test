@@ -9,6 +9,7 @@ const logger   = require('../utils/logger');
 const commonFn = require('./util');
 const syncFn   = require('./sync.service');
 const WebSocket = require('ws');
+const { signalSocket } = require('../repository/sender')
 
 const PUBLISHERS = 50;
 const bitrate = 3000000;
@@ -46,7 +47,7 @@ exports.init = (_signalSocketio, _redisInfo) => {
 
 //소켓 연결
 const createWebSocket = (url, socketId, resolve, reject) => {
-    let ws = new WebSocket("ws://" + url, 'janus-protocol');
+    let ws = new WebSocket('ws://' + url, 'janus-protocol');
 
     //message 수신 되었을 경우
     ws.onmessage = (message) => {
@@ -109,7 +110,7 @@ const createWebSocket = (url, socketId, resolve, reject) => {
         let reconnectTimeout = setTimeout(()=>{
             if(sockets[socketId]){
                 logger.info(`[ ## SIGNAL > JANUS ## ] try to reconnect every 30s`)
-                createWebSocket(url);
+                createWebSocket(url, socketId);
             } else {
                 logger.info(`[ ## SIGNAL > JANUS ## ] disconnect websocket ${socketId}`)
                 clearTimeout(reconnectTimeout);
@@ -267,7 +268,7 @@ const sendToClient = async (socketId, data) => {
     data.reqNo = await commonFn.reqNo();
     data.reqDate = commonFn.getDate();
 
-    // commonFn.signalSocket.emit(socketId, data);
+    signalSocket.emit(socketId, data);
 }
 
 //Client 연결 시 실행하여 websocket연결

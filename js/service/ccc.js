@@ -41,7 +41,7 @@ exports.roomJoin = async (data, sessionId, redis, socket, socketIo) => {
   logger.log('info', `[Socket : RoomJoin Event] ${uid} User RoomJoin, Session Id is : ${sessionId}, Room Id : ${data.roomId}`);
 
   let previous = await sync.getRoom(redis, data.roomId);
-  if (!previous) {
+  if (!previous || !data.roomId) {
     // Room 없거나 Error 시
     signalSocket.emit(sessionId, {
       eventOp: 'RoomJoin',
@@ -77,10 +77,12 @@ exports.roomJoin = async (data, sessionId, redis, socket, socketIo) => {
       if (previous.MULTITYPE === 'N') {
         // 기존 진행된 통화가 1:1 통화였다면
         try {
-          Object.keys(enteredRoomInfo.USERS).forEach((curr, index) => {
+          await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: true, type: 'cam', host: true });
+
+          Object.keys(enteredRoomInfo.USERS).forEach(curr => {
             (async () => {
               let _data = await sync.getUserInfoByUserId(redis, curr);
-              await core.joinVideoRoom(_data.SOCKET_ID, redis, { roomId: data.roomId, subscribe: true, type: 'cam', host: index === 0 });
+              if (_data.SOCKET_ID !== sessionId) await core.joinVideoRoom(_data.SOCKET_ID, redis, { roomId: data.roomId, subscribe: true, type: 'cam', host: false });
             })()
           });
 
@@ -105,7 +107,7 @@ exports.roomJoin = async (data, sessionId, redis, socket, socketIo) => {
       } else if (previous.MULTITYPE === 'Y') {
         // 기존 진행된 통화가 다자간 통화였다면
         try {
-          await core.joinVideoRoom(sessionId, { roomId: data.roomId, subscribe: true, type: 'cam', host: false });
+          await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: true, type: 'cam', host: false });
 
           signalSocket.emit(sessionId, {
             eventOp: 'StartSession',
@@ -136,14 +138,15 @@ exports.sdp = async (data, sessionId, redis, socket) => {
     signalSocket.broadcast(socket, data.roomId, data);
   } else {
     signalSocket.emit(sessionId, {
-      'eventOp': data.eventOp,
-      'reqNo': data.reqNo,
-      'code': "200",
-      'roomId': data.roomId,
-      'message': 'OK'
+      eventOp: data.eventOp,
+      reqNo: data.reqNo,
+      code: '200',
+      roomId: data.roomId,
+      message: 'OK'
     }, data);
 
     try {
+      if (data.sdp.usage === 'cam')
       let result = await core.sdpVideoRoom(sessionId, redis, {
         type: data.usage,
         sdp: data.sdp,
@@ -154,13 +157,38 @@ exports.sdp = async (data, sessionId, redis, socket) => {
       if (result === false) {
         console.log('error');
       }
+
+      if (data.sdp.type === 'offer') {
+        signalSocket.emit(sessionId, {
+          eventOp: 'SDP',
+          usage: data.usage,
+          userId: data.userId,
+          sdp: result.sdp,
+          roomId: data.roomId,
+          useMediaSvr: 'Y'
+        }, data);
+      }
     } catch (err) {
       console.log("SDP ERROR OCCURRED.", err);
     }
   }
 }
 
-exports.recesdp = async () => {
+exports.feedHandler = async (data, sessionId, redis) => {
+  // subscribe
+  const result = await core.receiveFeed(sessionId, data);
+  const displayId = (await sync.getUserInfoBySocketId(redis, result.display)).ID;
+
+  signalSocket.emit(sessionId, {
+    eventOp: 'SDP',
+    usage: result.type,
+    userId: data.userId,
+    sdp: result.sdp,
+    pluginId: result.pluginId,
+    displayId: displayId,
+    roomId: data.roomId,
+    useMediaSvr: 'Y'
+  }, data);
 }
 
 exports.candidate = async () => {
@@ -246,126 +274,102 @@ exports.endSessionReserve = async (data, sessionId, redis) => {
   });
 }
 
-exports.endScreenShare = async () => {
-  // if (!data.code) {
-  //   if(commonFn.isSfu() === true) {
-  //     try {
-  //       let janus_url = await syncFn.getJanusServerByRoomId(redisInfo, sessionDataFromRedis.ROOM_ID);
-  //       let janusRoomId = await syncFn.getJanusRoomId(redisInfo, sessionDataFromRedis.ROOM_ID);
-  //       fn_janus.leaveRoom(janus_url, sessionDataFromRedis['SCREEN_SHARE_JANUS_PUBLISHER_PLUGIN_ID'], janusRoomId);
-  //       fn_janus.detachVideoRoomPlugin(janus_url, sessionDataFromRedis['SCREEN_SHARE_JANUS_PUBLISHER_PLUGIN_ID']);
-  //
-  //       let redis_done = await syncFn.deleteJanusVideoFeedId(redisInfo, {feedId: sessionDataFromRedis['SCREEN_SHARE_JANUS_PUBLISHER_FEED_ID']});
-  //
-  //       delete sessionDataFromRedis['SCREEN_SHARE_JANUS_PUBLISHER_PLUGIN_ID'];
-  //       delete sessionDataFromRedis['SCREEN_SHARE_JANUS_PUBLISHER_FEED_ID'];
-  //       delete sessionDataFromRedis['SCREEN_SHARE_JANUS_PRIVATE_ID'];
-  //
-  //       await syncFn.updateUserSocketInfo(redisInfo, sessionId, sessionDataFromRedis);
-  //     } catch (e) {
-  //       console.log('ScreenShareConferenceEnd error..', e);
-  //     }
-  //   } else {
-  //     fn_Kurento.screenShareStop(sessionId, data.roomId, redisInfo);
-  //   }
-  //
-  //   let recvData = {
-  //     'eventOp': 'ScreenShareConferenceEnd',
-  //     'reqNo': data.reqNo,
-  //     'roomId': data.roomId,
-  //     'resDate': commonFn.getDate(),
-  //     'code': '200',
-  //     'message': 'OK'
-  //   };
-  //
-  //   let endSenderData = {
-  //     'eventOp': "ScreenShareConferenceEndSvr",
-  //     'userId': data.userId,
-  //     'reqDate': commonFn.getDate(),
-  //     'roomId': data.roomId,
-  //     'isSfu': commonFn.isSfu()
-  //   };
-  //
-  //   commonFn.reqNo().then(function (reqResult) {
-  //     endSenderData.reqNo = reqResult;
-  //     signalSocket.emit(sessionId, recvData);
-  //     logger.log('info', `[Socket : '${data.eventOp}  ' Event / 다자간 화상회의 / '${data.eventOp} '] *\n* 현재 처리중 방향 : [Signal -> App (Resp)] *\n* 요청자 : ' ${data.userId}' \n 종료 요청 전송중., App으로 전달 데이터 : ', ${JSON.stringify(recvData)  }`);
-  //     signalSocket.broadcast(socket, data.roomId, endSenderData);
-  //     logger.log('info', `[Socket : '${data.eventOp} ' Event / 다자간 화상회의 / '${data.eventOp} '] *\n* 현재 처리중 방향 : [Signal -> App (broadcast)] *\n* 전달요청자 : '${data.userId} ' \n ReqNo 생성 완료. App으로 전달 데이터 : ${JSON.stringify(endSenderData)  }`);
-  //   }).catch(function (error) {
-  //     console.log('error');
-  //   });
-  // }
+exports.endScreenShare = async (data, sessionId, redis, socket) => {
+  if (!data.code) {
+    try {
+      // let janus_url = await syncFn.getJanusServerByRoomId(redisInfo, sessionDataFromRedis.ROOM_ID);
+      // let janusRoomId = await syncFn.getJanusRoomId(redisInfo, sessionDataFromRedis.ROOM_ID);
+      // fn_janus.leaveRoom(janus_url, sessionDataFromRedis['SCREEN_SHARE_JANUS_PUBLISHER_PLUGIN_ID'], janusRoomId);
+      // fn_janus.detachVideoRoomPlugin(janus_url, sessionDataFromRedis['SCREEN_SHARE_JANUS_PUBLISHER_PLUGIN_ID']);
+      //
+      // let redis_done = await syncFn.deleteJanusVideoFeedId(redisInfo, {feedId: sessionDataFromRedis['SCREEN_SHARE_JANUS_PUBLISHER_FEED_ID']});
+      //
+      // delete sessionDataFromRedis['SCREEN_SHARE_JANUS_PUBLISHER_PLUGIN_ID'];
+      // delete sessionDataFromRedis['SCREEN_SHARE_JANUS_PUBLISHER_FEED_ID'];
+      // delete sessionDataFromRedis['SCREEN_SHARE_JANUS_PRIVATE_ID'];
+      //
+      // await syncFn.updateUserSocketInfo(redisInfo, sessionId, sessionDataFromRedis);
+    } catch (e) {
+      console.log('ScreenShareConferenceEnd error..', e);
+    }
+
+    let recvData = {
+      'eventOp': 'ScreenShareConferenceEnd',
+      'reqNo': data.reqNo,
+      'roomId': data.roomId,
+      'code': '200',
+      'message': 'OK'
+    };
+
+    let endSenderData = {
+      'eventOp': "ScreenShareConferenceEndSvr",
+      'userId': data.userId,
+      'roomId': data.roomId,
+    };
+
+    signalSocket.emit(sessionId, recvData);
+    signalSocket.broadcast(socket, data.roomId, endSenderData);
+  }
 }
 
-exports.setVideo = async () => {
-  // await syncFn.changeItemInRoom(redisInfo, data.roomId, data.userId, 'VIDEO', data.status)
-  // let videoData = {
-  //   'signalOp': 'SetVideo',
-  //   'userId': data.userId,
-  //   'reqDate': data.reqDate,
-  //   'roomId': data.roomId,
-  //   'status': data.status
-  // };
-
-  // signalSocket.broadcast(socket, data.roomId, videoData);
+exports.setVideo = async (data, sessionId, redis, socket) => {
+  await sync.changeItemInRoom(redis, data.roomId, data.userId, 'VIDEO', data.status);
+  signalSocket.broadcast(socket, data.roomId, {
+    'signalOp': 'SetVideo',
+    'userId': data.userId,
+    'reqDate': data.reqDate,
+    'roomId': data.roomId,
+    'status': data.status
+  });
 }
 
-exports.setAudio = async () => {
-  // await syncFn.changeItemInRoom(redisInfo, data.roomId, data.userId, 'AUDIO', data.status)
-  //   let audioData = {
-  //     'signalOp': 'SetAudio',
-  //     'userId': data.userId,
-  //     'reqDate': data.reqDate,
-  //     'roomId': data.roomId,
-  //     'status': data.status
-  //   };
-  // signalSocket.broadcast(socket, data.roomId, audioData);
+exports.setAudio = async (data, sessionId, redis, socket) => {
+  await sync.changeItemInRoom(redis, data.roomId, data.userId, 'AUDIO', data.status);
+  signalSocket.broadcast(socket, data.roomId, {
+    'signalOp': 'SetAudio',
+    'userId': data.userId,
+    'reqDate': data.reqDate,
+    'roomId': data.roomId,
+    'status': data.status
+  });
 }
 
-exports.changeName = async () => {
-  // await syncFn.changeItemInRoom(redisInfo, data.roomId, data.userId, 'NAME', data.name)
-  // signalSocket.broadcast(socket, data.roomId, {
-  //   signalOp: 'ChangeName',
-  //   userId: data.userId,
-  //   name: data.name
-  // })
+exports.changeName = async (data, sessionId, redis, socket) => {
+  await sync.changeItemInRoom(redis, data.roomId, data.userId, 'NAME', data.name);
+  signalSocket.broadcast(socket, data.roomId, {
+    signalOp: 'ChangeName',
+    userId: data.userId,
+    name: data.name
+  });
 }
 
-exports.disconnect = async (socket, redisInfo, sessionId) => {
-  // let o = await syncFn.getUserSocketInfo(redisInfo, sessionId);
-  // if (!o || !Object.keys(o).length) return;
-  // let roomId = o.ROOM_ID;
-  // let userId = o.ID;
-  // let roomInfo = await syncFn.getRoom(redisInfo, roomId);
-  //
-  // if (userId === roomInfo.SCREEN.USERID) {
-  //   syncFn.resetScreenShareFlag(redisInfo, userId, roomId, err => {});
-  //   signalSocket.broadcast(socket, roomId, {
-  //     eventOp: 'ScreenShareConferenceEndSvr',
-  //     roomId,
-  //     code: '200',
-  //     message: 'OK'
-  //   });
-  // }
-  //
-  // signalSocket.broadcast(socket, roomId, {
-  //   signalOp: 'Presence',
-  //   userId: userId,
-  //   action: 'exit'
-  // });
-  //
-  // let janus_url = await syncFn.getJanusServerByRoomId(redisInfo, roomId);
-  // let janusRoomId = await syncFn.getJanusRoomId(redisInfo, roomId);
-  // if (janusRoomId) {
-  //   await fn_janus.processLeaveVideoRoom(janus_url, sessionId, {
-  //     roomId, janusRoomId
-  //   });
-  // }
-  //
-  // await socket.leave(roomId);
-  // await syncFn.leaveRoom(redisInfo, roomId, sessionId);
-  //
-  // let count = Object.keys(roomInfo.USERS).length;
-  // if (count <= 1) await syncFn.deleteRoom(redisInfo, roomId);
+exports.disconnect = async (socket, redis, sessionId, socketIo) => {
+  let o = await sync.getUserInfoBySocketId(redis, sessionId);
+  if (!o || !Object.keys(o).length) return;
+
+  // FIXME: 200728 ivypark, add process when if multiple room id
+  // if (Object.keys(o.roomInfo).length > 1) return false;
+
+  let roomId = Object.keys(o.roomInfo)[0];
+  let userId = o.ID;
+  let roomInfo = await sync.getRoom(redis, roomId);
+
+  if (roomInfo.SCREEN && userId === roomInfo.SCREEN.USERID) {
+    sync.resetScreenShareFlag(redis, userId, roomId, err => {});
+    signalSocket.broadcast(socket, roomId, {
+      eventOp: 'ScreenShareConferenceEndSvr',
+      roomId,
+      code: '200',
+      message: 'OK'
+    });
+  }
+
+  signalSocket.broadcast(socket, roomId, {
+    signalOp: 'Presence',
+    userId: userId,
+    action: 'exit'
+  });
+
+  await sync.leaveRoom(redis, roomId, sessionId);
+  await core.disconnect(socket, redis, socketIo);
 }

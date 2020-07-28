@@ -27,6 +27,14 @@ exports.getUserInfoByUserId = function (redis, userId) {
   });
 };
 
+exports.getUserInfoBySocketId = function (redis, sessionId) {
+  return new Promise(resolve => {
+    redis.hget("USER_INFO_BY_SOCKET_ID", sessionId, (e, obj) => {
+      resolve(JSON.parse(obj));
+    });
+  });
+};
+
 exports.setUserInfo = function (redis, userId, socketId, serviceType, type) {
   return new Promise(resolve => {
     redis.hget("USER_INFO_BY_SOCKET_ID", socketId, (e, obj) => {
@@ -146,7 +154,7 @@ exports.setScreenShareFlag = function (redis, roomId, userId, callback) {
         callback(err, null);
         return;
       }
-      callback(null, multitype);
+      callback(null);
     });
   });
 };
@@ -188,3 +196,39 @@ exports.resetScreenShareFlag = function (redis, userId, roomId, callback) {
     }
   });
 };
+
+exports.changeItemInRoom = (redis, roomId, userId, item, value) => {
+  return new Promise(resolve => {
+    try {
+      redis.hget("ROOMS_INFO", roomId, (e, obj) => {
+        let roomInfo = JSON.parse(obj);
+        roomInfo.USERS[userId][item] = value;
+        redis.hset("ROOMS_INFO", roomId, JSON.stringify(roomInfo), () => {
+          resolve(roomInfo);
+        })
+      });
+    } catch (e) {
+      console.log(e);
+    }
+  });
+}
+
+exports.leaveRoom = (redis, roomId, sessionId) => {
+  // FROM CCC: writen by ivypark
+  return new Promise(resolve => {
+    try {
+      redis.hget("ROOMS_INFO", roomId, (e, obj) => {
+        let roomInfo = JSON.parse(obj);
+        redis.hget("USER_INFO_BY_SOCKET_ID", sessionId, (e, obj) => {
+          let o = JSON.parse(obj);
+          delete roomInfo.USERS[o.ID];
+          redis.hset("ROOMS_INFO", roomId, JSON.stringify(roomInfo));
+          redis.hdel("USER_INFO_BY_USER_ID", o.ID);
+          resolve();
+        });
+      });
+    } catch (e) {
+      console.log(e);
+    }
+  });
+}

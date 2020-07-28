@@ -38,5 +38,5 @@ module.exports = app => {
     }
   });
 
-  initialize(socketInfo);
+  initialize(socketInfo, redisInfo);
 };

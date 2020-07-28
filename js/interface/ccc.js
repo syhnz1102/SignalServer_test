@@ -6,7 +6,7 @@ module.exports = (socket, signalSocketio, redisInfo) => {
   const sessionId = socket.id;
   socket.on('disconnect', () => {
     logger.log('info', `[Socket : Disconnect Event] User Disconnection, Session Id is : ${sessionId}`);
-    cccService.disconnect();
+    cccService.disconnect(socket, redisInfo, sessionId, signalSocketio);
   });
   socket.on('knowledgetalk', async data => {
     // logger.log('info', `[Web -> Signal] : ${JSON.stringify(data)}`);
@@ -34,6 +34,13 @@ module.exports = (socket, signalSocketio, redisInfo) => {
         // cccService.candidate();
         break;
 
+      case 'ReceiveFeed':
+        break;
+
+      case 'SendFeed':
+        cccService.feedHandler(data, sessionId, redisInfo);
+        break;
+
       case 'SessionReserve':
         cccService.sessionReserve(data, sessionId, redisInfo);
         break;
@@ -43,19 +50,19 @@ module.exports = (socket, signalSocketio, redisInfo) => {
         break;
 
       case 'ScreenShareConferenceEnd':
-        cccService.endScreenShare();
+        cccService.endScreenShare(data, sessionId, redisInfo, socket);
         break;
 
       case 'SetVideo':
-        cccService.setVideo();
+        cccService.setVideo(data, sessionId, redisInfo, socket);
         break;
 
       case 'SetAudio':
-        cccService.setAudio();
+        cccService.setAudio(data, sessionId, redisInfo, socket);
         break;
 
       case 'ChangeName':
-        cccService.changeName();
+        cccService.changeName(data, sessionId, redisInfo, socket);
         break;
     }
   });
