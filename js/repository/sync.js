@@ -117,6 +117,7 @@ exports.isScreenSharePossible = function (redis, roomId, userId, callback) {
     }
 
     let result = JSON.parse(obj);
+    console.log(result);
     try {
       if (result.SCREEN.USERID && result.SCREEN.USERID === userId) {
         callback(true);
@@ -159,42 +160,32 @@ exports.setScreenShareFlag = function (redis, roomId, userId, callback) {
   });
 };
 
-exports.resetScreenShareFlag = function (redis, userId, roomId, callback) {
-  if (typeof callback !== "function") return;
+exports.resetScreenShareFlag = function (redis, userId, roomId) {
+  return new Promise((resolve) => {
+    if (!roomId) return resolve("error");
 
-  if (!roomId) {
-    logger.log("error", "resetScreenShareFlag roomid 없음.");
-    callback("error");
-    return;
-  }
+    redis.hget("ROOMS_INFO", roomId, function (err, obj) {
+      if (err) return;
+      let result = JSON.parse(obj);
 
-  redis.hget("ROOMS_INFO", roomId, function (err, obj) {
-    if (err) {
-      console.log(err);
-      return;
-    }
+      try {
+        if (userId === result.SCREEN.USERID) {
+          result.SCREEN.FLAG = false;
+          result.SCREEN.USERID = null;
 
-    let result = JSON.parse(obj);
-
-    try {
-      if (userId === result.SCREEN.USERID) {
-        result.SCREEN.FLAG = false;
-        result.SCREEN.USERID = null;
-
-        redis.hset("ROOMS_INFO", roomId, JSON.stringify(result), function (err, res) {
-          if (err) {
-            callback(err);
-            return;
-          }
-          callback(null);
-        });
-      } else {
-        callback("user error");
+          redis.hset("ROOMS_INFO", roomId, JSON.stringify(result), function (err, res) {
+            if (err) return resolve(err);
+            resolve(null);
+          });
+        } else {
+          resolve("user error");
+        }
+      } catch (e) {
+        console.log(e);
       }
-    } catch (e) {
-      console.log(e);
-    }
-  });
+    });
+  })
+
 };
 
 exports.changeItemInRoom = (redis, roomId, userId, item, value) => {

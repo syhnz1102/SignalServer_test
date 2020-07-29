@@ -146,27 +146,63 @@ exports.sdp = async (data, sessionId, redis, socket) => {
     }, data);
 
     try {
-      if (data.sdp.usage === 'cam')
-      let result = await core.sdpVideoRoom(sessionId, redis, {
-        type: data.usage,
-        sdp: data.sdp,
-        roomId: data.roomId,
-        pluginId: data.pluginId
-      })
-
-      if (result === false) {
-        console.log('error');
-      }
-
-      if (data.sdp.type === 'offer') {
-        signalSocket.emit(sessionId, {
-          eventOp: 'SDP',
-          usage: data.usage,
-          userId: data.userId,
-          sdp: result.sdp,
+      if (data.usage === 'cam') {
+        let result = await core.sdpVideoRoom(sessionId, redis, {
+          type: data.usage,
+          sdp: data.sdp,
           roomId: data.roomId,
-          useMediaSvr: 'Y'
-        }, data);
+          pluginId: data.pluginId
+        })
+
+        if (result === false) {
+          console.log('error');
+        }
+
+        if (data.sdp.type === 'offer') {
+          signalSocket.emit(sessionId, {
+            eventOp: 'SDP',
+            usage: data.usage,
+            userId: data.userId,
+            sdp: result.sdp,
+            roomId: data.roomId,
+            useMediaSvr: 'Y'
+          }, data);
+        }
+      } else if (data.usage === 'screen') {
+        if (data.sdp.type === 'offer') {
+          await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: false, type: 'screen' });
+
+          let result = await core.sdpVideoRoom(sessionId, redis, {
+            type: data.usage,
+            sdp: data.sdp,
+            roomId: data.roomId,
+            pluginId: data.pluginId
+          })
+
+          if (result === false) {
+            console.log('error');
+          }
+
+          signalSocket.emit(sessionId, {
+            eventOp: 'SDP',
+            usage: data.usage,
+            userId: data.userId,
+            sdp: result.sdp,
+            roomId: data.roomId,
+            useMediaSvr: 'Y'
+          }, data);
+        } else {
+          let result = await core.sdpVideoRoom(sessionId, redis, {
+            type: data.usage,
+            sdp: data.sdp,
+            roomId: data.roomId,
+            pluginId: data.pluginId
+          })
+
+          if (result === false) {
+            console.log('error');
+          }
+        }
       }
     } catch (err) {
       console.log("SDP ERROR OCCURRED.", err);
@@ -177,7 +213,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
 exports.feedHandler = async (data, sessionId, redis) => {
   // subscribe
   const result = await core.receiveFeed(sessionId, data);
-  const displayId = (await sync.getUserInfoBySocketId(redis, result.display)).ID;
+  let displayId = result.display.indexOf('_screen') > -1 ? result.display : (await sync.getUserInfoBySocketId(redis, result.display)).ID;
 
   signalSocket.emit(sessionId, {
     eventOp: 'SDP',
@@ -235,62 +271,48 @@ exports.sessionReserve = async (data, sessionId, redis) => {
 exports.endSessionReserve = async (data, sessionId, redis) => {
   let reserveEndReturnMsg = {};
 
-  sync.resetScreenShareFlag(redis, data.userId, data.roomId, function (err) {
-    if (err === 'error') {
-      // 190314 ivypark, sync function add catch block
-      signalSocket.emit(sessionId, {
-        eventOp: data.eventOp,
-        code: '543',
-        message: 'Internal Server Error'
-      });
-      console.log('Room Id를 찾을 수 없음 ');
-      logger.log('warn', 'Room Id를 찾을 수 없음 , room ID가 잘못 전송 된 경우.');
-      return;
-    } else if (err === 'user error') {
-      signalSocket.emit(sessionId, {
-        eventOp: data.eventOp,
-        code: '440',
-        message: 'Resources already in use'
-      });
-      return;
-    }
+  let err = await sync.resetScreenShareFlag(redis, data.userId, data.roomId);
+  if (err === 'error') {
+    // 190314 ivypark, sync function add catch block
+    signalSocket.emit(sessionId, {
+      eventOp: data.eventOp,
+      code: '543',
+      message: 'Internal Server Error'
+    });
+    console.log('Room Id를 찾을 수 없음 ');
+    logger.log('warn', 'Room Id를 찾을 수 없음 , room ID가 잘못 전송 된 경우.');
+    return;
+  } else if (err === 'user error') {
+    signalSocket.emit(sessionId, {
+      eventOp: data.eventOp,
+      code: '440',
+      message: 'Resources already in use'
+    });
+    return;
+  }
 
-    if (err) {
-      reserveEndReturnMsg.eventOp = 'SessionReserveEnd';
-      reserveEndReturnMsg.reqNo = data.reqNo;
-      reserveEndReturnMsg.code = '559'; // DB Unknown Error
-      reserveEndReturnMsg.message = 'DB Unknown Error';
-
-      signalSocket.emit(sessionId, reserveEndReturnMsg);
-      return;
-    }
-
+  if (err) {
     reserveEndReturnMsg.eventOp = 'SessionReserveEnd';
     reserveEndReturnMsg.reqNo = data.reqNo;
-    reserveEndReturnMsg.code = '200';
-    reserveEndReturnMsg.message = 'OK';
+    reserveEndReturnMsg.code = '559'; // DB Unknown Error
+    reserveEndReturnMsg.message = 'DB Unknown Error';
 
     signalSocket.emit(sessionId, reserveEndReturnMsg);
-  });
+    return;
+  }
+
+  reserveEndReturnMsg.eventOp = 'SessionReserveEnd';
+  reserveEndReturnMsg.reqNo = data.reqNo;
+  reserveEndReturnMsg.code = '200';
+  reserveEndReturnMsg.message = 'OK';
+
+  signalSocket.emit(sessionId, reserveEndReturnMsg);
 }
 
 exports.endScreenShare = async (data, sessionId, redis, socket) => {
   if (!data.code) {
-    try {
-      // let janus_url = await syncFn.getJanusServerByRoomId(redisInfo, sessionDataFromRedis.ROOM_ID);
-      // let janusRoomId = await syncFn.getJanusRoomId(redisInfo, sessionDataFromRedis.ROOM_ID);
-      // fn_janus.leaveRoom(janus_url, sessionDataFromRedis['SCREEN_SHARE_JANUS_PUBLISHER_PLUGIN_ID'], janusRoomId);
-      // fn_janus.detachVideoRoomPlugin(janus_url, sessionDataFromRedis['SCREEN_SHARE_JANUS_PUBLISHER_PLUGIN_ID']);
-      //
-      // let redis_done = await syncFn.deleteJanusVideoFeedId(redisInfo, {feedId: sessionDataFromRedis['SCREEN_SHARE_JANUS_PUBLISHER_FEED_ID']});
-      //
-      // delete sessionDataFromRedis['SCREEN_SHARE_JANUS_PUBLISHER_PLUGIN_ID'];
-      // delete sessionDataFromRedis['SCREEN_SHARE_JANUS_PUBLISHER_FEED_ID'];
-      // delete sessionDataFromRedis['SCREEN_SHARE_JANUS_PRIVATE_ID'];
-      //
-      // await syncFn.updateUserSocketInfo(redisInfo, sessionId, sessionDataFromRedis);
-    } catch (e) {
-      console.log('ScreenShareConferenceEnd error..', e);
+    if (data.useMediaSvr === 'Y') {
+      await core.exitVideoRoom(socket, redis, { type: 'screen', roomId: data.roomId })
     }
 
     let recvData = {
@@ -355,7 +377,7 @@ exports.disconnect = async (socket, redis, sessionId, socketIo) => {
   let roomInfo = await sync.getRoom(redis, roomId);
 
   if (roomInfo.SCREEN && userId === roomInfo.SCREEN.USERID) {
-    sync.resetScreenShareFlag(redis, userId, roomId, err => {});
+    await sync.resetScreenShareFlag(redis, userId, roomId);
     signalSocket.broadcast(socket, roomId, {
       eventOp: 'ScreenShareConferenceEndSvr',
       roomId,

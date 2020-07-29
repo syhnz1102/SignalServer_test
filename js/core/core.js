@@ -354,7 +354,7 @@ exports.receiveFeed = async (socketId, reqData) => {
       'sdp': resJanusData.jsep,
       'pluginId': resJanusData.sender,
       'display': reqData.display,
-      'type': "cam"
+      'type': reqData.display.indexOf('_screen') > -1 ? 'screen' : 'cam'
     }
 
     resolve(resData);

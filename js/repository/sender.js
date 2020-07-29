@@ -60,7 +60,6 @@ exports.coreConnector = {
             }
             // resolve({ code: String(res.statusCode) });
           } else {
-            console.log("dongwook ::: ", result, typeof result);
             if (!result) {
               result = JSON.stringify({});
             }
