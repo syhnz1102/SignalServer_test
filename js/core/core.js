@@ -210,22 +210,21 @@ exports.joinVideoRoom = async (socketId, redisInfo, reqData) => {
       let selectedUrl = '';
       let cpuUsage = 101;
 
-      //cpu 사용량이 적은 Media Server 찾기
-      // for(let i in mediaServerUrls){
-      //   let url = mediaServerUrls[i];
-      //
-      //   let serverStatus = await syncFn.getMediaServerInfo(redisInfo, url).catch(err => {
-      //     logger.error(`[ ## SYNC > SIGNAL ### ] getJanusUrls error : ${err}`);
-      //     resolve(false);
-      //     return;
-      //   })
-      //
-      //   if(serverStatus && (cpuUsage > serverStatus.cpu)){
-      //     cpuUsage = serverStatus.cpu;
-      //     selectedUrl = url;
-      //   }
-      // }
-      selectedUrl = config.media.url;
+      // cpu 사용량이 적은 Media Server 찾기
+      for(let i in mediaServerUrls){
+        let url = mediaServerUrls[i];
+      
+        let serverStatus = await syncFn.getMediaServerInfo(redisInfo, url).catch(err => {
+          logger.error(`[ ## SYNC > SIGNAL ### ] getJanusUrls error : ${err}`);
+          resolve(false);
+          return;
+        })
+      
+        if(serverStatus && (cpuUsage > serverStatus.cpu)){
+          cpuUsage = serverStatus.cpu;
+          selectedUrl = url;
+        }
+      }
 
       //Sync Server에 새로운 방 정보 등록
       roomData.mediaServerUrl = selectedUrl;
