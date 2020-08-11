@@ -47,7 +47,7 @@ exports.init = (_signalSocketio, _redisInfo) => {
 
 //소켓 연결
 const createWebSocket = (url, socketId, resolve, reject) => {
-    let ws = new WebSocket('ws://' + url, 'janus-protocol');
+    let ws = new WebSocket('ws://' + url +':7011', 'janus-protocol');
 
     //message 수신 되었을 경우
     ws.onmessage = (message) => {

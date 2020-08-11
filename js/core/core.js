@@ -218,7 +218,7 @@ exports.joinVideoRoom = async (socketId, redisInfo, reqData) => {
 
       // cpu 사용량이 적은 Media Server 찾기
       for(let i in mediaServerUrls){
-        let url = mediaServerUrls[i];
+        let url = mediaServerUrls[i].split(':')[1];
       
         let serverStatus = await syncFn.getMediaServerInfo(redisInfo, url).catch(err => {
           logger.error(`[ ## SYNC > SIGNAL ### ] getJanusUrls error : ${err}`);
