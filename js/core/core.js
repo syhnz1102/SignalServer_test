@@ -207,6 +207,12 @@ exports.joinVideoRoom = async (socketId, redisInfo, reqData) => {
         return;
       });
 
+      if(!mediaServerUrls){
+        logger.log(`[ ## SYNC > SIGNAL ### ] getJanuUrls error : ${err}`);
+        resolve(false);
+        return;
+      }
+
       let selectedUrl = '';
       let cpuUsage = 101;
 

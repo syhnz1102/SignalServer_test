@@ -308,7 +308,7 @@ exports.getRoomCount = (redis, url) => {
 //Media Server Url 가져오는 Method
 exports.getJanusUrls = (redis) => {
 	return new Promise((resolved, rejected) => {
-		redis.sscan(0, "match", "Media:*", (err, obj) => {
+		redis.scan(0, "match", "Media:*", "count", 1000000, (err, obj) => {
 			if(err){
 				resolved(false);
 				return;
