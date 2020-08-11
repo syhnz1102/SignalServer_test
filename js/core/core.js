@@ -250,9 +250,9 @@ exports.joinVideoRoom = async (socketId, redisInfo, reqData) => {
     })
 
     let sessionId = userData.sessionId?userData.sessionId:null;
-
+    logger.info(`dongwook check ::: ${sessionId}`)
     //media server room join
-    let resData = await janus_module.janusRoomJoin(roomData.mediaServerUrl || config.media.url, roomData.roomId, socketId, reqData.host, sessionId, redisInfo, reqData.subscribe, reqData.type).catch(err => {
+    let resData = await janus_module.janusRoomJoin(roomData.mediaServerUrl, roomData.roomId, socketId, reqData.host, sessionId, redisInfo, reqData.subscribe, reqData.type).catch(err => {
       logger.error(`[ ## JANUS > SIGNAL ## ] janusRoomJoin error : ${err}`);
       resolve(false);
       return;
