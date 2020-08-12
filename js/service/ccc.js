@@ -110,6 +110,13 @@ exports.roomJoin = async (data, sessionId, redis, socket, socketIo) => {
             host: false
           }, data);
 
+          signalSocket.broadcast(socket, data.roomId, {
+            signalOp: 'Presence',
+            members: enteredRoomInfo.USERS,
+            who: uid,
+            action: "join"
+          });
+
         } catch (err) {
           console.log("JOIN WITH JANUS ERROR", err);
         }
