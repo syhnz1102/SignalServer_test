@@ -79,19 +79,13 @@ exports.roomJoin = async (data, sessionId, redis, socket, socketIo) => {
         try {
           await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: true, type: 'cam', host: true });
 
-          Object.keys(enteredRoomInfo.USERS).forEach(curr => {
-            (async () => {
-              let _data = await sync.getUserInfoByUserId(redis, curr);
-              if (_data.SOCKET_ID !== sessionId) await core.joinVideoRoom(_data.SOCKET_ID, redis, { roomId: data.roomId, subscribe: true, type: 'cam', host: false });
-            })()
-          });
-
           signalSocket.emit(sessionId, {
             eventOp: 'StartSession',
             useMediaSvr: 'Y',
             members: enteredRoomInfo.USERS,
             changeView: true,
-            who: uid
+            who: uid,
+            host: true
           }, data);
 
           signalSocket.broadcast(socket, data.roomId, {
@@ -99,7 +93,8 @@ exports.roomJoin = async (data, sessionId, redis, socket, socketIo) => {
             useMediaSvr: 'Y',
             members: enteredRoomInfo.USERS,
             changeView: true,
-            who: uid
+            who: uid,
+            host: false
           });
         } catch (e) {
           console.error(e);
@@ -107,21 +102,14 @@ exports.roomJoin = async (data, sessionId, redis, socket, socketIo) => {
       } else if (previous.MULTITYPE === 'Y') {
         // 기존 진행된 통화가 다자간 통화였다면
         try {
-          await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: true, type: 'cam', host: false });
-
           signalSocket.emit(sessionId, {
             eventOp: 'StartSession',
             useMediaSvr: 'Y',
             members: enteredRoomInfo.USERS,
-            who: uid
+            who: uid,
+            host: false
           }, data);
 
-          signalSocket.broadcast(socket, data.roomId, {
-            eventOp: 'StartSession',
-            useMediaSvr: 'Y',
-            members: enteredRoomInfo.USERS,
-            who: uid
-          });
         } catch (err) {
           console.log("JOIN WITH JANUS ERROR", err);
         }
@@ -147,6 +135,11 @@ exports.sdp = async (data, sessionId, redis, socket) => {
 
     try {
       if (data.usage === 'cam') {
+
+        if(!data.host){
+          await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: true, type: 'cam', host: false })
+        }
+
         let result = await core.sdpVideoRoom(sessionId, redis, {
           type: data.usage,
           sdp: data.sdp,
