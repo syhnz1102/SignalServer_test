@@ -143,7 +143,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
     try {
       if (data.usage === 'cam') {
 
-        if(!data.host){
+        if(!data.host && data.sdp.type === 'offer'){
           await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: true, type: 'cam', host: false })
         }
 
