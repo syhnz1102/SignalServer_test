@@ -13,6 +13,7 @@ exports.signalSocket = {
     if (!roomId || !respData) {
       return;
     }
+
     socket.broadcast.to(roomId).emit('knowledgetalk', respData);
   }
 };
@@ -40,7 +41,7 @@ exports.coreConnector = {
 
       let OPTIONS = {
         headers: {'Content-Type': 'application/json'},
-        url: `${base}conference/v1/${url}`,
+        url: `${base}/platform/v1/${url}`,
         body: JSON.stringify(body)
       };
 

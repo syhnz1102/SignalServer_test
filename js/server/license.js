@@ -1,3 +1,16 @@
+const { coreConnector } = require('../repository/sender');
+const config = require('../config');
+
+exports.license = {
+  user: {
+    insert: async (sessionId, data, socket) => {
+      if (config.license.type === 'free' || !data.cpCode) return false;
+      Object.assign(data, { ip: socket.request.connection._peername.address })
+      await coreConnector.start(sessionId, 'post', 'ccc/insertUser', data);
+    },
+  }
+}
+
 exports.lic = {
   // emit: (body) => {
   //   request.post({

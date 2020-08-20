@@ -16,6 +16,6 @@ module.exports = (() => {
     was: cfg.server.was[env],
     media: cfg.server.media[env],
     sync: cfg.server.sync[env],
-    license: cfg.license
+    license: cfg.server.license
   };
 })();

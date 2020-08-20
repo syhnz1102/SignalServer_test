@@ -3,8 +3,11 @@ const utils = require('../utils/common');
 const { signalSocket, coreConnector } = require('../repository/sender');
 const sync = require('../repository/sync');
 const core = require('../core/core');
+const transaction = require('../repository/transaction');
+const { license } = require('../server/license');
+const config = require('../config');
 
-exports.createRoom = async (data, sessionId, redis) => {
+exports.createRoom = async (data, sessionId, redis, socket) => {
   const room = await utils.makeId(8);
   const createResult = await core.roomCreate(redis, { roomId: room });
   if (!createResult) {
@@ -22,8 +25,15 @@ exports.createRoom = async (data, sessionId, redis) => {
     eventOp: 'CreateRoom',
     code: '200',
     message: 'OK',
-    roomId: room,
+    roomId: room
   }, data);
+
+  transaction(sessionId, {
+    eventOp: 'create',
+    roomId: room,
+    cpCode: data.cpCode || config.license.code,
+    ip: socket.request.connection._peername.address
+  })
 }
 
 exports.destroyRoom = async (data, sessionId, redis) => {
@@ -53,8 +63,8 @@ exports.roomJoin = async (data, sessionId, redis, socket, socketIo) => {
     // Room 있는 경우
     await core.register(socket, redis);
     await core.roomJoin(socketIo, socket, redis, { roomId: data.roomId });
-    await sync.setUserInfo(redis, uid, sessionId, 'multi', 'ccc', data.roomId);
-    let enteredRoomInfo = await sync.enterRoom(redis, {uid, sessionId, roomId: data.roomId, userName: 'unknown'});
+    await sync.setUserInfo(redis, uid, sessionId, 'multi', 'ccc', data.roomId, data.cpCode || config.license.code);
+    let enteredRoomInfo = await sync.enterRoom(redis, { uid, sessionId, roomId: data.roomId, userName: 'unknown' });
 
     signalSocket.emit(sessionId, {
       eventOp: 'RoomJoin',
@@ -65,6 +75,15 @@ exports.roomJoin = async (data, sessionId, redis, socket, socketIo) => {
       roomId: data.roomId,
       // serverInfo: commonFn.serverInfo.getTurn()
     }, data);
+
+    transaction(sessionId, {
+      eventOp: 'join',
+      roomId: data.roomId,
+      cpCode: data.cpCode || config.license.code,
+      ip: socket.request.connection._peername.address,
+      userId: uid,
+      count: Object.keys(enteredRoomInfo.USERS).length
+    })
 
     if (enteredRoomInfo.MULTITYPE === 'N') {
       signalSocket.broadcast(socket, data.roomId, {
@@ -357,6 +376,7 @@ exports.setAudio = async (data, sessionId, redis, socket) => {
 }
 
 exports.changeName = async (data, sessionId, redis, socket) => {
+  await license.user.insert(sessionId, { cpCode: data.cpCode || config.license.code, name: data.name }, socket);
   await sync.changeItemInRoom(redis, data.roomId, data.userId, 'NAME', data.name);
   signalSocket.broadcast(socket, data.roomId, {
     signalOp: 'ChangeName',
@@ -374,6 +394,7 @@ exports.disconnect = async (socket, redis, sessionId, socketIo) => {
 
   let roomId = Object.keys(o.roomInfo)[0];
   let userId = o.ID;
+  let cp = o.CP;
   let roomInfo = await sync.getRoom(redis, roomId);
 
   if (roomInfo.SCREEN && userId === roomInfo.SCREEN.USERID) {
@@ -385,6 +406,15 @@ exports.disconnect = async (socket, redis, sessionId, socketIo) => {
       message: 'OK'
     });
   }
+
+  transaction(sessionId, {
+    eventOp: 'exit',
+    roomId: roomId,
+    userId: userId,
+    cpCode: cp || config.license.code,
+    ip: socket.request.connection._peername.address,
+    count: Object.keys(roomInfo.USERS).length
+  })
 
   signalSocket.broadcast(socket, roomId, {
     signalOp: 'Presence',

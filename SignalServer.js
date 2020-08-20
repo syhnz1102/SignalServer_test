@@ -19,7 +19,7 @@ if (cluster.isMaster) {
     passphrase: config.ssl.passphrase
   };
 
-  const server = https.createServer(options, express()).listen(config.port, function() {
+  const server = https.createServer(options, express()).listen(config.port, '0.0.0.0', function() {
     console.log('::: HTTPS ::: Signal Server Started - PORT : ' + config.port);
   });
 

@@ -1,3 +1,5 @@
+const config = require('../config')
+
 let serverInfo = {
   signal: {},
   core: [],
@@ -32,19 +34,13 @@ exports.serverInfo = serverInfo
 exports.setServerInfo = signalIo => {
   return new Promise(async (resolve, reject) => {
     serverInfo.signal = signalIo;
+    for (let i in config.was) {
+      if (config.was.hasOwnProperty(i)) {
+        let _url = `${config.was[i].url}:${config.was[i].port}`
+        serverInfo.core.push(_url);
+      }
+    }
 
-    // for (let i in commonConfig.serverURL.coreServer) {
-    //   if (commonConfig.serverURL.coreServer.hasOwnProperty(i)) {
-    //     let _url = commonConfig.serverURL.coreServer[i] + ':'
-    //       + commonConfig.serverPort.coreServer[i] + '/'
-    //       + commonConfig.nameSpace.coreServer;
-    //
-    //     serverInfo.core.push(_url);
-    //   }
-    // }
-    //
-    // let result = await coreConnector.start('', 'get', 'info/servers', {})
-    // serverInfo.turn = result.servers;
     resolve();
   });
 };

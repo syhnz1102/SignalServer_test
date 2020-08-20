@@ -35,15 +35,16 @@ exports.getUserInfoBySocketId = function (redis, sessionId) {
   });
 };
 
-exports.setUserInfo = function (redis, userId, socketId, serviceType, type) {
+exports.setUserInfo = function (redis, userId, socketId, serviceType, type, roomId, cp) {
   return new Promise(resolve => {
     redis.hget("USER_INFO_BY_SOCKET_ID", socketId, (e, obj) => {
       let o = JSON.parse(obj);
       o.ID = userId;
       o.SERVICE_TYPE = serviceType;
       o.TYPE = type;
+      o.CP = cp;
       redis.hset("USER_INFO_BY_SOCKET_ID", socketId, JSON.stringify(o), () => {
-        let userIdData = {SOCKET_ID: socketId, ROOM_ID: "", SERVICE_TYPE: serviceType, TYPE: type};
+        let userIdData = {SOCKET_ID: socketId, ROOM_ID: "", SERVICE_TYPE: serviceType, TYPE: type, CP: cp};
         redis.hset("USER_INFO_BY_USER_ID", userId, JSON.stringify(userIdData));
         resolve();
       });

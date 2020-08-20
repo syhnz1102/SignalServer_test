@@ -1,6 +1,8 @@
 const logger = require('../utils/logger');
+const checker = require('../server/checker');
 
 const cccService = require('../service/ccc');
+const { signalSocket } = require('../repository/sender');
 
 module.exports = (socket, signalSocketio, redisInfo) => {
   const sessionId = socket.id;
@@ -9,10 +11,16 @@ module.exports = (socket, signalSocketio, redisInfo) => {
     cccService.disconnect(socket, redisInfo, sessionId, signalSocketio);
   });
   socket.on('knowledgetalk', async data => {
-    // logger.log('info', `[Web -> Signal] : ${JSON.stringify(data)}`);
+    logger.log('info', `[Web -> Signal] : ${JSON.stringify(data)}`);
+    const isChecked = await checker(sessionId, data);
+    if (!isChecked) {
+      signalSocket.emit(sessionId, { code: '413', message: 'Auth Error' });
+      return false;
+    }
+
     switch (data.eventOp || data.signalOp) {
       case 'CreateRoom':
-        cccService.createRoom(data, sessionId, redisInfo);
+        cccService.createRoom(data, sessionId, redisInfo, socket);
         break;
 
       case 'DestroyRoom':
@@ -63,6 +71,10 @@ module.exports = (socket, signalSocketio, redisInfo) => {
 
       case 'ChangeName':
         cccService.changeName(data, sessionId, redisInfo, socket);
+        break;
+
+      case 'Disconnect':
+        cccService.disconnect(socket, redisInfo, sessionId, signalSocketio);
         break;
     }
   });
