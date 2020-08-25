@@ -10,7 +10,8 @@ const config = require('../config');
 exports.createRoom = async (data, sessionId, redis, socket) => {
   const room = await utils.makeId(8);
   const createResult = await core.roomCreate(redis, { roomId: room });
-  if (!createResult) {
+  console.log(createResult)
+  if (createResult.code && createResult.code !== 200) {
     signalSocket.emit(sessionId, {
       eventOp: 'CreateRoom',
       code: '400',
@@ -96,7 +97,23 @@ exports.roomJoin = async (data, sessionId, redis, socket, socketIo) => {
       if (previous.MULTITYPE === 'N') {
         // 기존 진행된 통화가 1:1 통화였다면
         try {
-          await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: true, type: 'cam', host: true });
+          let videoRoomData = await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: true, type: 'cam', host: true });
+
+          if(videoRoomData.code && videoRoomData.code !== 200){
+            signalSocket.emit(sessionId, {
+              eventOp: 'StartSession',
+              code: 570,
+              message: 'Media Server Error'
+            }, data);
+
+            signalSocket.broadcast(socket, data.roomId, {
+              eventOp: 'StartSession',
+              code: 570,
+              message: 'Media Server Error'
+            });
+
+            return;
+          }
 
           signalSocket.emit(sessionId, {
             eventOp: 'StartSession',
@@ -163,7 +180,24 @@ exports.sdp = async (data, sessionId, redis, socket) => {
       if (data.usage === 'cam') {
 
         if(!data.host && data.sdp.type === 'offer'){
-          await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: true, type: 'cam', host: false })
+          let videoRoomData = await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: true, type: 'cam', host: false })
+
+          if(videoRoomData.code && videoRoomData.code !== 200){
+            signalSocket.emit(sessionId, {
+              eventOp: 'StartSession',
+              code: 570,
+              message: 'Media Server Error'
+            }, data);
+
+            signalSocket.broadcast(socket, data.roomId, {
+              eventOp: 'StartSession',
+              code: 570,
+              message: 'Media Server Error'
+            });
+
+            return;
+          }
+
         }
 
         let result = await core.sdpVideoRoom(sessionId, redis, {
@@ -173,7 +207,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
           pluginId: data.pluginId
         })
 
-        if (result === false) {
+        if (result.code && result.code !== 200) {
           console.log('error');
         }
 
@@ -189,7 +223,23 @@ exports.sdp = async (data, sessionId, redis, socket) => {
         }
       } else if (data.usage === 'screen') {
         if (data.sdp.type === 'offer') {
-          await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: false, type: 'screen' });
+          let videoRoomData = await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: false, type: 'screen' });
+
+          if(videoRoomData.code && videoRoomData.code !== 200){
+            signalSocket.emit(sessionId, {
+              eventOp: 'SDP',
+              code: 570,
+              message: 'Media Server Error'
+            }, data);
+
+            signalSocket.broadcast(socket, data.roomId, {
+              eventOp: 'SDP',
+              code: 570,
+              message: 'Media Server Error'
+            });
+
+            return;
+          }
 
           let result = await core.sdpVideoRoom(sessionId, redis, {
             type: data.usage,
@@ -198,7 +248,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
             pluginId: data.pluginId
           })
 
-          if (result === false) {
+          if (result.code && result.code !== 200) {
             console.log('error');
           }
 
@@ -218,7 +268,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
             pluginId: data.pluginId
           })
 
-          if (result === false) {
+          if (result.code && result.code !== 200) {
             console.log('error');
           }
         }
