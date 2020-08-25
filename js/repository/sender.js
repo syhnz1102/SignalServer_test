@@ -1,5 +1,6 @@
 const request = require('request');
 const { serverInfo } = require('../server/info');
+const logger = require('../utils/logger');
 
 exports.signalSocket = {
   emit: (sessionId, respData, reqData) => {
@@ -8,6 +9,12 @@ exports.signalSocket = {
     }
 
     serverInfo.signal.to(sessionId).emit('knowledgetalk', respData);
+
+    if(respData.sdp && respData.sdp.sdp){
+      respData.sdp.sdp = "SDP info..."
+    }
+
+    logger.log('info', `[ ### SIGNAL > WEB ### ] : ${JSON.stringify(respData)}`);
   },
   broadcast: (socket, roomId, respData, reqData) => {
     if (!roomId || !respData) {
@@ -15,6 +22,10 @@ exports.signalSocket = {
     }
 
     socket.broadcast.to(roomId).emit('knowledgetalk', respData);
+  },
+  room: (roomId, respData, reqData) => {
+    logger.log('info', `[ ### SIGNAL > WEB ### ] : ${JSON.stringify(respData)}`);
+    serverInfo.signal.to(roomId).emit('knowledgetalk', respData);
   }
 };
 

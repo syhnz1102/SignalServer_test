@@ -11,7 +11,17 @@ module.exports = (socket, signalSocketio, redisInfo) => {
     cccService.disconnect(socket, redisInfo, sessionId, signalSocketio);
   });
   socket.on('knowledgetalk', async data => {
-    logger.log('info', `[Web -> Signal] : ${JSON.stringify(data)}`);
+
+    //SDP 정보 제외 하고 log 출력
+    if(data.eventOp === 'SDP' && data.sdp && data.sdp.sdp) {
+      let sdpReqData = data.sdp.sdp;
+      data.sdp.sdp = "sdp info...";
+      logger.log('info', `[ ### WEB > SIGNAL ### ] : ${JSON.stringify(data)}`);
+      data.sdp.sdp = sdpReqData;
+    } else {
+      logger.log('info', `[ ### WEB > SIGNAL ### ] : ${JSON.stringify(data)}`);
+    }
+
     const isChecked = await checker(sessionId, data);
     if (!isChecked) {
       signalSocket.emit(sessionId, { code: '413', message: 'Auth Error' });
