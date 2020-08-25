@@ -215,7 +215,7 @@ const messageProcessor = async (message, socketId) => {
         return false;
     }
 
-    //publisher event 수신 시, subscriber로 입장 
+    //publisher event 수신 시, subscriber로 입장
     if(messageObj.janus == 'event' && messageObj.plugindata && messageObj.plugindata.data && messageObj.plugindata.data.publishers && messageObj.plugindata.data.publishers.length>0){
         let publishers = messageObj.plugindata.data.publishers;
         let roomId = messageObj.plugindata.data.room;
@@ -237,6 +237,31 @@ const messageProcessor = async (message, socketId) => {
             //client에 sdpData 전송
             sendToClient(syncData[messageObj.sender].socketId, data);        
         }
+    }
+
+    //화자감지
+    if(messageObj.janus == 'event' && messageObj.plugindata && messageObj.plugindata.data && messageObj.plugindata.data.videoroom && (messageObj.plugindata.data.videoroom == 'talking' || messageObj.plugindata.data.videoroom == 'stopped-talking')){
+        let roomId = messageObj.plugindata.data.room;
+
+        //publisher로 join 했던 handle id 값으로 user 정보 가져오기
+        syncData[messageObj.sender] = await syncFn.getUserInfoByHandleId(redisInfo, messageObj.sender).catch(err => {
+            logger.error(`[ ## SYNC > SIGNAL ### ] getUserInfoByHandleId error : ${err}`);
+        });
+
+        let uidForCCC = await syncFn.getUserInfoBySocketId(redisInfo, syncData[messageObj.sender].socketId).catch(err => {
+            logger.error(`[ ## SYNC > SIGNAL ### ] getUserInfoBySocketId error : ${err}`);
+        });
+
+        //client에 보낼 message
+        let data = {
+            'signalOp':"Presence",
+            'who': uidForCCC != null?uidForCCC:syncData[messageObj.sender],
+            'talking': messageObj.plugindata.data.videoroom == 'talking'? true:false,
+        }
+
+        //room에 화자 정보 전송
+        sendToRoom(syncData[messageObj.sender].socketId, roomId, data);
+
     }
 
     //받은 message를 resolve로 return
@@ -269,6 +294,15 @@ const sendToClient = async (socketId, data) => {
     data.reqDate = commonFn.getDate();
 
     signalSocket.emit(socketId, data);
+}
+
+//room에 전달
+const sendToRoom = async (socketId, roomId, data) => {
+    data.reqNo = await commonFn.reqNo();
+    data.reqDate = commonFn.getDate();
+
+    signalSocket.room(roomId, data);
+
 }
 
 //Client 연결 시 실행하여 websocket연결
@@ -341,6 +375,8 @@ exports.createRoom = (url, handleId, publisherNumber, socketId, roomId) => {
                 request    : 'create',
                 publishers : publisherNumber,
                 room       : roomId,
+                audiolevel_event: true,
+                audio_level_average: 70,
                 record : false,
                 rec_dir: '/home/kpoint/justinjung/janus/share/janus/recordings/'
             }
