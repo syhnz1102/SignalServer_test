@@ -255,7 +255,7 @@ const messageProcessor = async (message, socketId) => {
         //client에 보낼 message
         let data = {
             'signalOp':"Presence",
-            'who': uidForCCC != null?uidForCCC:syncData[messageObj.sender],
+            'who': uidForCCC != null? uidForCCC.ID:syncData[messageObj.sender].socketId,
             'talking': messageObj.plugindata.data.videoroom == 'talking'? true:false,
         }
 
