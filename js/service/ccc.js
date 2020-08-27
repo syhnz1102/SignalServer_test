@@ -101,7 +101,7 @@ exports.roomJoin = async (data, sessionId, redis, socket, socketIo) => {
 
           if(videoRoomData.code && videoRoomData.code !== '200'){
 
-            signalSocket.room(socket, data.roomId, {
+            signalSocket.room(data.roomId, {
               eventOp: 'StartSession',
               code: videoRoomData.code,
               message: await common.codeToMsg(parseInt(videoRoomData.code))
