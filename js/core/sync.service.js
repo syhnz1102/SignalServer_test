@@ -32,7 +32,7 @@ exports.setUserInfoBySocketId = (redis, socketId, data) => {
 	return new Promise((resolved, rejected) => {
 		redis.hset('USER_INFO_BY_SOCKET_ID', socketId, setString(data), error => {
 			if(error){
-				rejected({rejectCode});
+				rejected(rejectCode);
 				return false;
 			}
 			resolved(true);
