@@ -5,6 +5,8 @@
 * 설    명 : Sync Server관련 Method
 *****************************************************/
 
+const common = require('../utils/common')
+
 //String으로 변환
 function setString(data){
 	return JSON.stringify(data);
@@ -16,9 +18,9 @@ function setObject(data){
 }
 
 let rejectCode = {
-	code: "561",
-	message: "Internal Server Error",
-  };
+	code: '500',
+	message: await common.codeToMsg(500)
+};
 
 /****************************** user 정보 관련 method ******************************/
 

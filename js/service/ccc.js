@@ -6,16 +6,16 @@ const core = require('../core/core');
 const transaction = require('../repository/transaction');
 const { license } = require('../server/license');
 const config = require('../config');
+const common = require('../utils/common')
 
 exports.createRoom = async (data, sessionId, redis, socket) => {
   const room = await utils.makeId(8);
   const createResult = await core.roomCreate(redis, { roomId: room });
-  console.log(createResult)
-  if (createResult.code && createResult.code !== 200) {
+  if (createResult.code) {
     signalSocket.emit(sessionId, {
       eventOp: 'CreateRoom',
-      code: '400',
-      message: 'room is already exist.',
+      code: createResult.code,
+      message: await common.codeToMsg(400),
       roomId: room,
     }, data);
     return false;
@@ -25,7 +25,7 @@ exports.createRoom = async (data, sessionId, redis, socket) => {
   signalSocket.emit(sessionId, {
     eventOp: 'CreateRoom',
     code: '200',
-    message: 'OK',
+    message: await common.codeToMsg(200),
     roomId: room
   }, data);
 
@@ -43,7 +43,7 @@ exports.destroyRoom = async (data, sessionId, redis) => {
   signalSocket.emit(sessionId, {
     eventOp: 'DestroyRoom',
     code: '200',
-    message: 'OK',
+    message: await common.codeToMsg(200),
   }, data);
 }
 
@@ -57,7 +57,7 @@ exports.roomJoin = async (data, sessionId, redis, socket, socketIo) => {
     signalSocket.emit(sessionId, {
       eventOp: 'RoomJoin',
       code: '400',
-      message: 'Error',
+      message: await common.codeToMsg(400),
       useMediaSvr: 'N'
     }, data);
   } else {
@@ -70,7 +70,7 @@ exports.roomJoin = async (data, sessionId, redis, socket, socketIo) => {
     signalSocket.emit(sessionId, {
       eventOp: 'RoomJoin',
       code: '200',
-      message: 'OK',
+      message: await common.codeToMsg(200),
       userId: uid,
       members: enteredRoomInfo.USERS,
       roomId: data.roomId,
@@ -99,22 +99,18 @@ exports.roomJoin = async (data, sessionId, redis, socket, socketIo) => {
         try {
           let videoRoomData = await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: true, type: 'cam', host: true });
 
-          if(videoRoomData.code && videoRoomData.code !== 200){
-            signalSocket.emit(sessionId, {
-              eventOp: 'StartSession',
-              code: 570,
-              message: 'Media Server Error'
-            }, data);
+          if(videoRoomData.code && videoRoomData.code !== '200'){
 
-            signalSocket.broadcast(socket, data.roomId, {
+            signalSocket.room(socket, data.roomId, {
               eventOp: 'StartSession',
-              code: 570,
-              message: 'Media Server Error'
+              code: videoRoomData.code,
+              message: await common.codeToMsg(parseInt(videoRoomData.code))
             });
 
             return;
           }
 
+          //방장에게 보내는 Message
           signalSocket.emit(sessionId, {
             eventOp: 'StartSession',
             useMediaSvr: 'Y',
@@ -124,6 +120,7 @@ exports.roomJoin = async (data, sessionId, redis, socket, socketIo) => {
             host: true
           }, data);
 
+          //기존 통화중인 user 에 보내는 Message
           signalSocket.broadcast(socket, data.roomId, {
             eventOp: 'StartSession',
             useMediaSvr: 'Y',
@@ -173,7 +170,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
       reqNo: data.reqNo,
       code: '200',
       roomId: data.roomId,
-      message: 'OK'
+      message: await common.codeToMsg(200)
     }, data);
 
     try {
@@ -182,17 +179,11 @@ exports.sdp = async (data, sessionId, redis, socket) => {
         if(!data.host && data.sdp.type === 'offer'){
           let videoRoomData = await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: true, type: 'cam', host: false })
 
-          if(videoRoomData.code && videoRoomData.code !== 200){
-            signalSocket.emit(sessionId, {
-              eventOp: 'StartSession',
-              code: 570,
-              message: 'Media Server Error'
-            }, data);
-
-            signalSocket.broadcast(socket, data.roomId, {
-              eventOp: 'StartSession',
-              code: 570,
-              message: 'Media Server Error'
+          if(videoRoomData.code && videoRoomData.code !== '200'){
+            signalSocket.room(data.roomId, {
+              eventOp: 'SDP',
+              code: videoRoomData.code,
+              message: await common.codeToMsg(parseInt(videoRoomData))
             });
 
             return;
@@ -207,7 +198,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
           pluginId: data.pluginId
         })
 
-        if (result.code && result.code !== 200) {
+        if (result.code && result.code !== '200') {
           console.log('error');
         }
 
@@ -225,17 +216,17 @@ exports.sdp = async (data, sessionId, redis, socket) => {
         if (data.sdp.type === 'offer') {
           let videoRoomData = await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: false, type: 'screen' });
 
-          if(videoRoomData.code && videoRoomData.code !== 200){
+          if(videoRoomData.code && videoRoomData.code !== '200'){
             signalSocket.emit(sessionId, {
               eventOp: 'SDP',
-              code: 570,
-              message: 'Media Server Error'
+              code: '570',
+              message: await common.codeToMsg(570)
             }, data);
 
             signalSocket.broadcast(socket, data.roomId, {
               eventOp: 'SDP',
-              code: 570,
-              message: 'Media Server Error'
+              code: '570',
+              message: await common.codeToMsg(570)
             });
 
             return;
@@ -248,7 +239,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
             pluginId: data.pluginId
           })
 
-          if (result.code && result.code !== 200) {
+          if (result.code && result.code !== '200') {
             console.log('error');
           }
 
@@ -268,7 +259,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
             pluginId: data.pluginId
           })
 
-          if (result.code && result.code !== 200) {
+          if (result.code && result.code !== '200') {
             console.log('error');
           }
         }
@@ -304,19 +295,19 @@ exports.sessionReserve = async (data, sessionId, redis) => {
   let userId = data.userId;
   let reserveReturnMsg = {};
 
-  sync.isScreenSharePossible(redis, roomId, userId, function (possible) {
+  sync.isScreenSharePossible(redis, roomId, userId, async (possible) => {
     if (possible === 'error') {
       // 190314 ivypark, sync function add catch block
       signalSocket.emit(sessionId, {
         eventOp: data.eventOp,
         code: '543',
-        message: 'Internal Server Error.'
+        message: await common.codeToMsg(543)
       }, data);
       return;
     }
 
     if (typeof possible === 'boolean' && possible) {
-      sync.setScreenShareFlag(redis, roomId, userId, function (err) {
+      sync.setScreenShareFlag(redis, roomId, userId, async err => {
         if (err) {
           console.log(err);
           return;
@@ -324,14 +315,14 @@ exports.sessionReserve = async (data, sessionId, redis) => {
         reserveReturnMsg.eventOp = 'SessionReserve';
         reserveReturnMsg.reqNo = data.reqNo;
         reserveReturnMsg.code = '200';
-        reserveReturnMsg.message = 'OK';
+        reserveReturnMsg.message = await common.codeToMsg(200);
         signalSocket.emit(sessionId, reserveReturnMsg, data);
       })
     } else {
       reserveReturnMsg.eventOp = 'SessionReserve'
       reserveReturnMsg.reqNo = data.reqNo
       reserveReturnMsg.code = '440' // Resources already in use
-      reserveReturnMsg.message = 'Resources already in use';
+      reserveReturnMsg.message = await common.codeToMsg(440);
       signalSocket.emit(sessionId, reserveReturnMsg, data);
     }
   });
@@ -346,7 +337,7 @@ exports.endSessionReserve = async (data, sessionId, redis) => {
     signalSocket.emit(sessionId, {
       eventOp: data.eventOp,
       code: '543',
-      message: 'Internal Server Error'
+      message: await common.codeToMsg(543)
     });
     console.log('Room Id를 찾을 수 없음 ');
     logger.log('warn', 'Room Id를 찾을 수 없음 , room ID가 잘못 전송 된 경우.');
@@ -355,7 +346,7 @@ exports.endSessionReserve = async (data, sessionId, redis) => {
     signalSocket.emit(sessionId, {
       eventOp: data.eventOp,
       code: '440',
-      message: 'Resources already in use'
+      message: await common.codeToMsg(440)
     });
     return;
   }
@@ -364,7 +355,7 @@ exports.endSessionReserve = async (data, sessionId, redis) => {
     reserveEndReturnMsg.eventOp = 'SessionReserveEnd';
     reserveEndReturnMsg.reqNo = data.reqNo;
     reserveEndReturnMsg.code = '559'; // DB Unknown Error
-    reserveEndReturnMsg.message = 'DB Unknown Error';
+    reserveEndReturnMsg.message = await common.codeToMsg(559);
 
     signalSocket.emit(sessionId, reserveEndReturnMsg);
     return;
@@ -373,7 +364,7 @@ exports.endSessionReserve = async (data, sessionId, redis) => {
   reserveEndReturnMsg.eventOp = 'SessionReserveEnd';
   reserveEndReturnMsg.reqNo = data.reqNo;
   reserveEndReturnMsg.code = '200';
-  reserveEndReturnMsg.message = 'OK';
+  reserveEndReturnMsg.message = await common.codeToMsg(200);
 
   signalSocket.emit(sessionId, reserveEndReturnMsg);
 }
@@ -385,17 +376,17 @@ exports.endScreenShare = async (data, sessionId, redis, socket) => {
     }
 
     let recvData = {
-      'eventOp': 'ScreenShareConferenceEnd',
-      'reqNo': data.reqNo,
-      'roomId': data.roomId,
-      'code': '200',
-      'message': 'OK'
+      eventOp: 'ScreenShareConferenceEnd',
+      reqNo: data.reqNo,
+      roomId: data.roomId,
+      code: '200',
+      message: await common.codeToMsg(200)
     };
 
     let endSenderData = {
-      'eventOp': "ScreenShareConferenceEndSvr",
-      'userId': data.userId,
-      'roomId': data.roomId,
+      eventOp: "ScreenShareConferenceEndSvr",
+      userId: data.userId,
+      roomId: data.roomId,
     };
 
     signalSocket.emit(sessionId, recvData);
@@ -406,22 +397,22 @@ exports.endScreenShare = async (data, sessionId, redis, socket) => {
 exports.setVideo = async (data, sessionId, redis, socket) => {
   await sync.changeItemInRoom(redis, data.roomId, data.userId, 'VIDEO', data.status);
   signalSocket.broadcast(socket, data.roomId, {
-    'signalOp': 'SetVideo',
-    'userId': data.userId,
-    'reqDate': data.reqDate,
-    'roomId': data.roomId,
-    'status': data.status
+    signalOp: 'SetVideo',
+    userId: data.userId,
+    reqDate: data.reqDate,
+    roomId: data.roomId,
+    status: data.status
   });
 }
 
 exports.setAudio = async (data, sessionId, redis, socket) => {
   await sync.changeItemInRoom(redis, data.roomId, data.userId, 'AUDIO', data.status);
   signalSocket.broadcast(socket, data.roomId, {
-    'signalOp': 'SetAudio',
-    'userId': data.userId,
-    'reqDate': data.reqDate,
-    'roomId': data.roomId,
-    'status': data.status
+    signalOp: 'SetAudio',
+    userId: data.userId,
+    reqDate: data.reqDate,
+    roomId: data.roomId,
+    status: data.status
   });
 }
 
@@ -453,7 +444,7 @@ exports.disconnect = async (socket, redis, sessionId, socketIo) => {
       eventOp: 'ScreenShareConferenceEndSvr',
       roomId,
       code: '200',
-      message: 'OK'
+      message: await common.codeToMsg(200)
     });
   }
 

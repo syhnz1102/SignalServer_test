@@ -21,8 +21,7 @@ exports.register = (socket, redisInfo) => {
     });
 
     resolve({
-      code: 200,
-      message: "OK"
+      code: '200'
     });
   })
 }
@@ -47,8 +46,7 @@ exports.roomCreate = async (redisInfo, reqData) => {
       //이미 room이 존재하는 경우
       if(roomData){
         resolve({
-          code: 443,
-          message: "It already exists"
+          code: '443'
         });
         return;
       } else {
@@ -83,8 +81,7 @@ exports.roomJoin = async (socketIo, socket, redisInfo, reqData) => {
     if(!userData){
       logger.info(`[ ## SYNC > SIGNAL ### ] There is no such user in Sync Server`);
       resolve({
-        code: 543,
-        message: "No Such User In Server"
+        code: '543',
       });
       return;
     }
@@ -99,8 +96,7 @@ exports.roomJoin = async (socketIo, socket, redisInfo, reqData) => {
     if(!roomData){
       logger.info(`[ ## SYNC > SIGNAL ### ] There is no such room in Sync Server`);
       resolve({
-        code: 543,
-        message: "No Such Room In Server"
+        code: '543',
       });
       return;
     }
@@ -150,8 +146,7 @@ exports.exitRoom = async (socketIo, socket, redisInfo, reqData) => {
     if(!userData){
       logger.info(`[ ## SYNC > SIGNAL ### ] There is no such user in Sync Server`);
       resolve({
-        code: 543,
-        message: "No Such User In Server"
+        code: '543'
       });
       return;
     }
@@ -165,8 +160,7 @@ exports.exitRoom = async (socketIo, socket, redisInfo, reqData) => {
     if(!roomData){
       logger.info(`[ ## SYNC > SIGNAL ### ] There is no such room in Sync Server`);
       resolve({
-        code: 543,
-        message: "No Such Room In Server"
+        code: '543'
       });
       return;
     }
@@ -193,8 +187,7 @@ exports.exitRoom = async (socketIo, socket, redisInfo, reqData) => {
     });
 
     resolve({
-      code: 200,
-      message: "OK"
+      code: '200'
     });
   })
 }
@@ -206,17 +199,15 @@ exports.joinVideoRoom = async (socketId, redisInfo, reqData) => {
     let roomData = await syncFn.getRoomDetail(redisInfo, reqData.roomId).catch(err => {
       logger.error(`[ ## SYNC > SIGNAL ### ] getRoomDetail error : ${err}`);
       resolve({
-        code: 543,
-        message: "getRoomDetail Error"
+        code: '543'
       });
       return;
     })
 
-    if(roomData.code && roomData.code !== 200){
+    if(roomData.code && roomData.code !== '200'){
       logger.info(`[ ## SYNC > SIGNAL ### ] There is no such room in Sync Server`);
       resolve({
-        code: 543,
-        message: "No Such Room In Server"
+        code: '442'
       });
       return;
     }
@@ -231,17 +222,15 @@ exports.joinVideoRoom = async (socketId, redisInfo, reqData) => {
       let mediaServerUrls = await syncFn.getJanusUrls(redisInfo).catch(err => {
         logger.error(`[ ## SYNC > SIGNAL ### ] getJanusUrls error : ${err}`);
         resolve({
-          code: 570,
-          message: "GetJanusUrls Error"
+          code: '570'
         });
         return;
       });
 
       if(!mediaServerUrls){
-        logger.log(`[ ## SYNC > SIGNAL ### ] getJanuUrls error : ${err}`);
+        logger.log(`[ ## SYNC > SIGNAL ### ] getJanusUrls error : ${err}`);
         resolve({
-          code: 543,
-          message: "GetJanusUrls Error"
+          code: '570'
         });
         return;
       }
@@ -256,8 +245,7 @@ exports.joinVideoRoom = async (socketId, redisInfo, reqData) => {
         let serverStatus = await syncFn.getMediaServerInfo(redisInfo, url).catch(err => {
           logger.error(`[ ## SYNC > SIGNAL ### ] getJanusUrls error : ${err}`);
           resolve({
-            code: 543,
-            message: "GetJanusUrls Error"
+            code: '570'
           });
           return;
         })
@@ -274,8 +262,7 @@ exports.joinVideoRoom = async (socketId, redisInfo, reqData) => {
       await syncFn.setRoom(redisInfo, roomData.roomId, roomData).catch(err => {
         logger.error(`[ ## SYNC > SIGNAL ### ] setRoom Error ${err}`);
         resolve({
-          code: 543,
-          message: "SetRoom Error"
+          code: '570'
         });
         return;
       })
@@ -285,8 +272,7 @@ exports.joinVideoRoom = async (socketId, redisInfo, reqData) => {
     userData = await syncFn.getUserInfoBySocketId(redisInfo, socketId).catch(err => {
       logger.error(`[ ## SYNC > SIGNAL ### ] getUserInfoBySocketId error : ${err}`);
       resolve({
-        code: 543,
-        message: "getUserInfoBySocketId Error"
+        code: '570'
       });
       return;
     })
@@ -297,8 +283,7 @@ exports.joinVideoRoom = async (socketId, redisInfo, reqData) => {
     let resData = await janus_module.janusRoomJoin(roomData.mediaServerUrl, roomData.roomId, socketId, reqData.host, sessionId, redisInfo, reqData.subscribe, reqData.type).catch(err => {
       logger.error(`[ ## JANUS > SIGNAL ## ] janusRoomJoin error : ${err}`);
       resolve({
-        code: 570,
-        message: "janusRoomJoin Error"
+        code: '570'
       });
       return;
     })
@@ -323,16 +308,14 @@ exports.joinVideoRoom = async (socketId, redisInfo, reqData) => {
     await syncFn.setUserInfoBySocketId(redisInfo, socketId, userData).catch(err => {
       logger.error(`[ ## SYNC > SIGNAL ### ] setUserInfo Error ${err}`);
       resolve({
-        code: 543,
-        message: "setUserInfo Error"
+        code: '570'
       });
 
       return;
     });
 
     resolve({
-      code: 200,
-      message: "OK"
+      code: '200'
     });
   })
 }
@@ -344,8 +327,7 @@ exports.sdpVideoRoom = async (socketId, redisInfo, reqData) => {
     let userData = await syncFn.getUserInfoBySocketId(redisInfo, socketId).catch(err => {
       logger.error(`[ ## SYNC > SIGNAL ### ] getUserInfoBySocketId Error ${err}`);
       resolve({
-        code: 543,
-        message: "getUserInfoBySocketId Error"
+        code: '543'
       });
       return;
     });
@@ -363,8 +345,7 @@ exports.sdpVideoRoom = async (socketId, redisInfo, reqData) => {
     let roomData = await syncFn.getRoomDetail(redisInfo, reqData.roomId).catch(err => {
       logger.error(`[ ## SYNC > SIGNAL ### ] getRoomDetail Error ${err}`);
       resolve({
-        code: 543,
-        message: "getRoomDetail Error"
+        code: '543'
       });
       return;
     })
@@ -378,8 +359,7 @@ exports.sdpVideoRoom = async (socketId, redisInfo, reqData) => {
         logger.error(`[ ## JANUS > SIGNAL ## ] sendOffer : ${err}`);
         delete janusResData[socketId];
         resolve({
-          code: 570,
-          message: "sendOffer Error"
+          code: '570'
         });
         return;
       });
@@ -392,15 +372,13 @@ exports.sdpVideoRoom = async (socketId, redisInfo, reqData) => {
         logger.error(`[ ## JANUS > SIGNAL ## ] sendAnswerForSubscriber : ${err}`);
         delete janusResData[socketId];
         resolve({
-          code: 570,
-          message: "sendAnswerForSubscriber Error"
+          code: '570'
         });
         return;
       });
 
       resolve({
-        code: 200,
-        message: "OK"
+        code: '200'
       });
     }
   })
@@ -453,8 +431,7 @@ exports.exitVideoRoom = async (socket, redisInfo, reqData) => {
     if(!userData){
         logger.info(`[ ## SYNC > SIGNAL ### ] There is no such user in Sync Server`);
         resolve({
-          code: 543,
-          message: "No Such User In Server"
+          code: '543'
         });
         return;
     }
@@ -486,8 +463,7 @@ exports.exitVideoRoom = async (socket, redisInfo, reqData) => {
         if(!roomData){
             logger.info(`[ ## SYNC > SIGNAL ### ] There is no such room in Sync Server`);
             resolve({
-              code: 543,
-              message: "No Such Room In Server"
+              code: '543'
             });
             return;
         }
@@ -543,8 +519,7 @@ exports.exitVideoRoom = async (socket, redisInfo, reqData) => {
             if(!roomData){
                 logger.info(`[ ## SYNC > SIGNAL ### ] There is no such room in Sync Server`);
                 resolve({
-                  code: 543,
-                  message: "No Such Room In Server"
+                  code: '543'
                 });
                 return;
             }
@@ -584,8 +559,7 @@ exports.exitVideoRoom = async (socket, redisInfo, reqData) => {
 
     }
     resolve({
-      code: 200,
-      message: "OK"
+      code: '200'
     });
   })
 }
@@ -610,8 +584,7 @@ exports.disconnect = async (socket, redisInfo, socketIo) => {
     if (!userData) {
       logger.info(`[ ## SYNC > SIGNAL ### ] There is no such user in Sync Server`);
       resolve({
-        code: 543,
-        message: "No Such User In Server"
+        code: '543'
       });
       return;
     }
@@ -629,8 +602,7 @@ exports.disconnect = async (socket, redisInfo, socketIo) => {
         if (!roomData) {
           logger.info(`[ ## SYNC > SIGNAL ### ] There is no such room in Sync Server`);
           resolve({
-            code: 543,
-            message: "No Such Room In Server"
+            code: '543'
           });
           return;
         }
@@ -687,8 +659,7 @@ exports.disconnect = async (socket, redisInfo, socketIo) => {
     if (isViaMediaServer) fn_janus.deleteSocket(socketId);
 
     resolve({
-      code: 200,
-      message: "OK"
+      code: '200'
     });
   })
 }

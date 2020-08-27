@@ -229,9 +229,9 @@ const messageProcessor = async (message, socketId) => {
         if(syncData[messageObj.sender].subscribe && publishers[0].display != syncData[messageObj.sender].socketId + "_screen"){
             //client에 보낼 message
             let data = {
-                'eventOp':"ReceiveFeed",
-                'roomId': roomId,
-                'feeds': publishers,
+                eventOp:"ReceiveFeed",
+                roomId: roomId,
+                feeds: publishers,
             }
 
             //client에 sdpData 전송
@@ -254,9 +254,9 @@ const messageProcessor = async (message, socketId) => {
 
         //client에 보낼 message
         let data = {
-            'signalOp':"Presence",
-            'who': uidForCCC && uidForCCC.ID? uidForCCC.ID:syncData[messageObj.sender].socketId,
-            'talking': messageObj.plugindata.data.videoroom == 'talking'? true:false,
+            signalOp:"Presence",
+            who: uidForCCC && uidForCCC.ID? uidForCCC.ID:syncData[messageObj.sender].socketId,
+            talking: messageObj.plugindata.data.videoroom == 'talking'? true:false,
         }
 
         //room에 화자 정보 전송

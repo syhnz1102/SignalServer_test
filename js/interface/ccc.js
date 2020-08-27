@@ -1,4 +1,5 @@
 const logger = require('../utils/logger');
+const common = require('../utils/common');
 const checker = require('../server/checker');
 
 const cccService = require('../service/ccc');
@@ -6,9 +7,9 @@ const { signalSocket } = require('../repository/sender');
 
 module.exports = (socket, signalSocketio, redisInfo) => {
   const sessionId = socket.id;
-  socket.on('disconnect', () => {
+  socket.on('disconnect', async () => {
     logger.log('info', `[Socket : Disconnect Event] User Disconnection, Session Id is : ${sessionId}`);
-    cccService.disconnect(socket, redisInfo, sessionId, signalSocketio);
+    await cccService.disconnect(socket, redisInfo, sessionId, signalSocketio);
   });
   socket.on('knowledgetalk', async data => {
 
@@ -24,28 +25,31 @@ module.exports = (socket, signalSocketio, redisInfo) => {
 
     const isChecked = await checker(sessionId, data);
     if (!isChecked) {
-      signalSocket.emit(sessionId, { code: '413', message: 'Auth Error' });
+      signalSocket.emit(sessionId, {
+        code: '413',
+        message: await common.codeToMsg(413)
+      });
       return false;
     }
 
     switch (data.eventOp || data.signalOp) {
       case 'CreateRoom':
-        cccService.createRoom(data, sessionId, redisInfo, socket);
+        await cccService.createRoom(data, sessionId, redisInfo, socket);
         break;
 
       case 'DestroyRoom':
-        cccService.destroyRoom(data, sessionId, redisInfo);
+        await cccService.destroyRoom(data, sessionId, redisInfo);
         break;
 
       case 'RoomJoin':
-        cccService.roomJoin(data, sessionId, redisInfo, socket, signalSocketio);
+        await cccService.roomJoin(data, sessionId, redisInfo, socket, signalSocketio);
         break;
 
       case 'StartSession':
         break;
 
       case 'SDP':
-        cccService.sdp(data, sessionId, redisInfo, socket, signalSocketio);
+        await cccService.sdp(data, sessionId, redisInfo, socket, signalSocketio);
         break;
 
       case 'Candidate':
@@ -56,35 +60,35 @@ module.exports = (socket, signalSocketio, redisInfo) => {
         break;
 
       case 'SendFeed':
-        cccService.feedHandler(data, sessionId, redisInfo);
+        await cccService.feedHandler(data, sessionId, redisInfo);
         break;
 
       case 'SessionReserve':
-        cccService.sessionReserve(data, sessionId, redisInfo);
+        await cccService.sessionReserve(data, sessionId, redisInfo);
         break;
 
       case 'SessionReserveEnd':
-        cccService.endSessionReserve(data, sessionId, redisInfo);
+        await cccService.endSessionReserve(data, sessionId, redisInfo);
         break;
 
       case 'ScreenShareConferenceEnd':
-        cccService.endScreenShare(data, sessionId, redisInfo, socket);
+        await cccService.endScreenShare(data, sessionId, redisInfo, socket);
         break;
 
       case 'SetVideo':
-        cccService.setVideo(data, sessionId, redisInfo, socket);
+        await cccService.setVideo(data, sessionId, redisInfo, socket);
         break;
 
       case 'SetAudio':
-        cccService.setAudio(data, sessionId, redisInfo, socket);
+        await cccService.setAudio(data, sessionId, redisInfo, socket);
         break;
 
       case 'ChangeName':
-        cccService.changeName(data, sessionId, redisInfo, socket);
+        await cccService.changeName(data, sessionId, redisInfo, socket);
         break;
 
       case 'Disconnect':
-        cccService.disconnect(socket, redisInfo, sessionId, signalSocketio);
+        await cccService.disconnect(socket, redisInfo, sessionId, signalSocketio);
         break;
     }
   });

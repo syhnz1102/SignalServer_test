@@ -1,6 +1,7 @@
 const request = require('request');
 const { serverInfo } = require('../server/info');
 const logger = require('../utils/logger');
+const common = require('../utils/common');
 
 exports.signalSocket = {
   emit: (sessionId, respData, reqData) => {
@@ -35,12 +36,12 @@ exports.coreConnector = {
     const base = await serverInfo.getCore();
     return new Promise((resolve, reject) => {
 
-      let time = setTimeout(() => {
+      let time = setTimeout(async () => {
         clearTimeout(time);
         let msg = {
           code: '504',
-          message: 'Server Timeout'
-        };
+          message: await common.codeToMsg(504)
+        }
 
         if (!sessionId) {
           logger.error(`FATAL : All Core Server are DEAD.`);
@@ -56,13 +57,13 @@ exports.coreConnector = {
         body: JSON.stringify(body)
       };
 
-      let apiCallback = (err, res, result) => {
+      let apiCallback = async (err, res, result) => {
         if (!err) {
           clearTimeout(time);
           if (res.statusCode === 404) {
             let msg = {
-              code: '501',
-              message: 'Internal Server Error'
+              code: '500',
+              message: await common.codeToMsg(500)
             };
 
             if (!sessionId) {
