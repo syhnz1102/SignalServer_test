@@ -200,6 +200,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
 
         if (result.code && result.code !== '200') {
           console.log('error');
+          return false;
         }
 
         if (data.sdp.type === 'offer') {
@@ -241,6 +242,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
 
           if (result.code && result.code !== '200') {
             console.log('error');
+            return false;
           }
 
           signalSocket.emit(sessionId, {
@@ -261,6 +263,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
 
           if (result.code && result.code !== '200') {
             console.log('error');
+            return false;
           }
         }
       }
