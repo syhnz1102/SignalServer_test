@@ -17,10 +17,13 @@ function setObject(data){
 	return JSON.parse(data);
 }
 
-let rejectCode = {
-	code: '500',
-	message: await common.codeToMsg(500)
-};
+
+const rejectCode = (async () => {
+	return {
+		code: '500',
+		message: await common.codeToMsg(500)
+	}
+})();
 
 /****************************** user 정보 관련 method ******************************/
 
@@ -29,7 +32,7 @@ exports.setUserInfoBySocketId = (redis, socketId, data) => {
 	return new Promise((resolved, rejected) => {
 		redis.hset('USER_INFO_BY_SOCKET_ID', socketId, setString(data), error => {
 			if(error){
-				rejected(rejectCode);
+				rejected({rejectCode});
 				return false;
 			}
 			resolved(true);
