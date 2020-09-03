@@ -22,6 +22,7 @@ exports.getRoom = function (redis, roomId) {
 exports.getUserInfoByUserId = function (redis, userId) {
   return new Promise(resolve => {
     redis.hget("USER_INFO_BY_USER_ID", userId, (e, obj) => {
+      if (error || !obj) return resolve(-1);
       resolve(JSON.parse(obj));
     });
   });
@@ -38,6 +39,7 @@ exports.getUserInfoBySocketId = function (redis, sessionId) {
 exports.setUserInfo = function (redis, userId, socketId, serviceType, type, roomId, cp) {
   return new Promise(resolve => {
     redis.hget("USER_INFO_BY_SOCKET_ID", socketId, (e, obj) => {
+      if (error || !obj) return resolve(-1);
       let o = JSON.parse(obj);
       o.ID = userId;
       o.SERVICE_TYPE = serviceType;
@@ -55,6 +57,7 @@ exports.setUserInfo = function (redis, userId, socketId, serviceType, type, room
 exports.createRoom = (redis, roomId) => {
   return new Promise(resolve => {
     redis.hget("ROOMS_INFO", roomId, function (error, obj) {
+      if (error || !obj) return resolve(-1);
       let roomInfo = JSON.parse(obj);
       roomInfo.USERS = {};
       roomInfo.MULTITYPE = 'N';
@@ -146,18 +149,22 @@ exports.setScreenShareFlag = function (redis, roomId, userId, callback) {
       console.log(err);
       return;
     }
+    try {
+      let result = JSON.parse(obj);
+      result.SCREEN.FLAG = true;
+      result.SCREEN.USERID = userId;
 
-    let result = JSON.parse(obj);
-    result.SCREEN.FLAG = true;
-    result.SCREEN.USERID = userId;
-
-    redis.hset("ROOMS_INFO", roomId, JSON.stringify(result), function (err, res) {
-      if (err) {
-        callback(err, null);
-        return;
-      }
-      callback(null);
-    });
+      redis.hset("ROOMS_INFO", roomId, JSON.stringify(result), function (err, res) {
+        if (err) {
+          callback(err, null);
+          return;
+        }
+        callback(null);
+      });
+    } catch (e) {
+      console.log(e)
+      return;
+    }
   });
 };
 
@@ -191,17 +198,19 @@ exports.resetScreenShareFlag = function (redis, userId, roomId) {
 
 exports.changeItemInRoom = (redis, roomId, userId, item, value) => {
   return new Promise(resolve => {
-    try {
-      redis.hget("ROOMS_INFO", roomId, (e, obj) => {
-        let roomInfo = JSON.parse(obj);
+    redis.hget("ROOMS_INFO", roomId, (e, obj) => {
+      let roomInfo;
+      try {
+        roomInfo = JSON.parse(obj);
         roomInfo.USERS[userId][item] = value;
+
         redis.hset("ROOMS_INFO", roomId, JSON.stringify(roomInfo), () => {
           resolve(roomInfo);
         })
-      });
-    } catch (e) {
-      console.log(e);
-    }
+      } catch (e) {
+        console.log(e)
+      }
+    });
   });
 }
 
