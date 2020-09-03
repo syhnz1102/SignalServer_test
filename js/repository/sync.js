@@ -217,19 +217,19 @@ exports.changeItemInRoom = (redis, roomId, userId, item, value) => {
 exports.leaveRoom = (redis, roomId, sessionId) => {
   // FROM CCC: writen by ivypark
   return new Promise(resolve => {
-    try {
-      redis.hget("ROOMS_INFO", roomId, (e, obj) => {
-        let roomInfo = JSON.parse(obj);
-        redis.hget("USER_INFO_BY_SOCKET_ID", sessionId, (e, obj) => {
+    redis.hget("ROOMS_INFO", roomId, (e, obj) => {
+      let roomInfo = JSON.parse(obj);
+      redis.hget("USER_INFO_BY_SOCKET_ID", sessionId, (e, obj) => {
+        try {
           let o = JSON.parse(obj);
           delete roomInfo.USERS[o.ID];
           redis.hset("ROOMS_INFO", roomId, JSON.stringify(roomInfo));
           redis.hdel("USER_INFO_BY_USER_ID", o.ID);
           resolve();
-        });
+        } catch (e) {
+          console.log(e);
+        }
       });
-    } catch (e) {
-      console.log(e);
-    }
+    });
   });
 }
