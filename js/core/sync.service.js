@@ -335,3 +335,16 @@ exports.getMediaServerInfo = (redis, url) => {
 		})
 	})
 }
+
+//Media Server 정보 삭제하는 Method
+exports.delMediaServerInfo = (redis, url) => {
+	return new Promise((resolved, rejected) => {
+		redis.del('Media:'+url, (err, obj) => {
+			if(err){
+				resolved(false);
+				return;
+			}
+			resolved(true);
+		})
+	})
+}
