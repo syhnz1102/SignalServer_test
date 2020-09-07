@@ -2,7 +2,7 @@ const { coreConnector } = require('../repository/sender');
 
 module.exports = (sessionId, data) => {
   return new Promise(async (resolve, reject) => {
-    if(data.code == "200"){
+    if(data.code == '200'){
       resolve(true)
       return
     }

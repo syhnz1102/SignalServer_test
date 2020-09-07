@@ -5,11 +5,20 @@ const checker = require('../server/checker');
 const cccService = require('../service/ccc');
 const { signalSocket } = require('../repository/sender');
 
+let keepAliveCheck = {};
+
 module.exports = (socket, signalSocketio, redisInfo) => {
+
+  //keepAlive
+  keepAliveCheck[socket.id] = setTimeout(() => {
+    socket.disconnect(true);
+  }, 60000)
+
+
   const sessionId = socket.id;
   socket.on('disconnect', async () => {
     logger.log('info', `[Socket : Disconnect Event] User Disconnection, Session Id is : ${sessionId}`);
-    await cccService.disconnect(socket, redisInfo, sessionId, signalSocketio);
+    await cccService.exitRoom(socket, redisInfo, sessionId, signalSocketio, true);
   });
   socket.on('knowledgetalk', async data => {
 
@@ -87,8 +96,12 @@ module.exports = (socket, signalSocketio, redisInfo) => {
         await cccService.changeName(data, sessionId, redisInfo, socket);
         break;
 
-      case 'Disconnect':
-        await cccService.disconnect(socket, redisInfo, sessionId, signalSocketio);
+      case 'ExitRoom':
+        await cccService.exitRoom(socket, redisInfo, sessionId, signalSocketio, false);
+        break;
+
+      case 'KeepAlive':
+        await cccService.keepAlive(socket, data, keepAliveCheck);
         break;
     }
   });

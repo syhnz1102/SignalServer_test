@@ -1,3 +1,6 @@
+const syncFn   = require('./sync.service');
+const logger   = require('../utils/logger');
+
 exports.reqNo = function() {
     return new Promise(function(resolved, rejected){
         let reqNo = "";
@@ -40,3 +43,28 @@ exports.getRoomId = function(){
 		});
 	});
 };
+
+//Media Server cpu 최소 사용 server 찾는 method
+exports.getLightestMediaServer = (mediaServerUrls, redisInfo) => {
+    return new Promise(async (resolve, reject) => {
+        let selectedUrl = '';
+        let cpuUsage = 101;
+
+        for(let i in mediaServerUrls){
+            let url = mediaServerUrls[i].split(':')[1];
+
+            let serverStatus = await syncFn.getMediaServerInfo(redisInfo, url).catch(err => {
+                logger.error(`[ ## SYNC > SIGNAL ### ] getJanusUrls error : ${err}`);
+                resolve(false);
+                return;
+            })
+
+            if(serverStatus && (cpuUsage > serverStatus.cpu)){
+                cpuUsage = serverStatus.cpu;
+                selectedUrl = url;
+            }
+        }
+
+        resolve(selectedUrl)
+    })
+}

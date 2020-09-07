@@ -65,13 +65,13 @@ const createWebSocket = (url, socketId, resolve, reject) => {
         janus_arr.push(url);
         sockets[socketId] = ws;
         delete sockets['undefined'];
-        
+
         //sessionId create
         this.createJanusSession(ws).then( res => {
             ws['janusSessionId'] = res.data.id;
             //sessionId를 key값으로 url 저장
             sessionId_url[res.data.id] = url;
-            
+
             //keepalive message 재귀 함수 이용하여 계속 전송
             let keepAliveInterval = setInterval(()=>{
                 if(ws['janusSessionId'] && sockets[socketId]){
@@ -83,7 +83,7 @@ const createWebSocket = (url, socketId, resolve, reject) => {
 
             //websocket 연결 완료 resolve
             resolve(res.data.id);
-        
+
         }).catch(err => {
             //websocket 연결 실패 reject
             logger.error(`[ ## JANUS > SIGNAL ## ] ${err}`)
@@ -97,7 +97,7 @@ const createWebSocket = (url, socketId, resolve, reject) => {
             if(url === janus_arr[i]){
                 janus_arr.splice(i,1);
                 break;
-            } 
+            }
         }
 
         //websocket 정보 삭제
@@ -105,7 +105,7 @@ const createWebSocket = (url, socketId, resolve, reject) => {
             delete sessionId_url[url_janus[url].janusSessionId];
             delete url_janus[url];
         }
-        
+
         //재연결 시도
         let reconnectTimeout = setTimeout(()=>{
             if(sockets[socketId]){
@@ -132,7 +132,7 @@ const createTrxId = () => {
         randomString += charSet.substring(randomPoz,randomPoz+1);
     };
 
-    return randomString;    
+    return randomString;
 }
 
 //roomId create method
@@ -154,7 +154,7 @@ const sendMsg = (janus, order, msg, onSuccess, onError) => {
     let trxid = createTrxId();
     msg.transaction = trxid;
 
-    //message 정보 
+    //message 정보
     transactions[trxid]={};
 
     //각 응답에 대한 값 저장
@@ -191,7 +191,7 @@ const messageProcessor = async (message, socketId) => {
     if(messageObj.transaction){
         trx = transactions[messageObj.transaction];
     }
-    
+
     //log에 sdp 정보 나오지 않도록 출력
     let tempSDP = messageObj.jsep?messageObj.jsep.sdp:null;
     if(!tempSDP){
@@ -201,7 +201,7 @@ const messageProcessor = async (message, socketId) => {
         logger.info(`[ ## JANUS > SIGNAL ## ] ${JSON.stringify(messageObj)}`);
         messageObj.jsep.sdp = tempSDP
     }
-  
+
     //error message를 응답 받을 시, 처리
     if(messageObj.plugindata && messageObj.plugindata.data && messageObj.plugindata.data.error_code) {
         res = {
@@ -235,7 +235,7 @@ const messageProcessor = async (message, socketId) => {
             }
 
             //client에 sdpData 전송
-            sendToClient(syncData[messageObj.sender].socketId, data);        
+            sendToClient(syncData[messageObj.sender].socketId, data);
         }
     }
 
@@ -434,8 +434,8 @@ exports.joinRoomAsSubscriber = (url, handleId, janusRoomId, feedId, socketId) =>
                 request : 'join',
                 room : janusRoomId,
                 ptype : 'subscriber',
-                feed : feedId            
-            } 
+                feed : feedId
+            }
         }
 
         sendMsg(sockets[socketId], order, msg, resolve, reject);

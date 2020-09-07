@@ -429,7 +429,7 @@ exports.changeName = async (data, sessionId, redis, socket) => {
   });
 }
 
-exports.disconnect = async (socket, redis, sessionId, socketIo) => {
+exports.exitRoom = async (socket, redis, sessionId, socketIo, isUnusual) => {
   let o = await sync.getUserInfoBySocketId(redis, sessionId);
   if (!o || !Object.keys(o).length) return;
 
@@ -452,7 +452,7 @@ exports.disconnect = async (socket, redis, sessionId, socketIo) => {
   }
 
   transaction(sessionId, {
-    eventOp: 'exit',
+    eventOp: isUnusual?'disconnect':'exit',
     roomId: roomId,
     userId: userId,
     cpCode: cp || config.license.code,
@@ -468,4 +468,18 @@ exports.disconnect = async (socket, redis, sessionId, socketIo) => {
 
   await sync.leaveRoom(redis, roomId, sessionId);
   await core.disconnect(socket, redis, socketIo);
+}
+
+exports.keepAlive = async (socket, data, keepAlive) => {
+  clearTimeout(keepAlive[socket.id]);
+
+  signalSocket.emit(socket.id,{
+    eventOp:'KeepAlive',
+    code: '200',
+    message: 'OK'
+  })
+
+  keepAlive[socket.id] = setTimeout(() => {
+    socket.disconnect(true);
+  },60000)
 }
