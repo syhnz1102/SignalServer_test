@@ -471,7 +471,7 @@ exports.exitRoom = async (socket, redis, sessionId, socketIo, isUnusual) => {
 }
 
 exports.keepAlive = async (socket, data, keepAlive) => {
-  clearTimeout(keepAlive[socket.id]);
+  // clearTimeout(keepAlive[socket.id]);
 
   signalSocket.emit(socket.id,{
     eventOp:'KeepAlive',
@@ -479,7 +479,7 @@ exports.keepAlive = async (socket, data, keepAlive) => {
     message: 'OK'
   })
 
-  keepAlive[socket.id] = setTimeout(() => {
-    socket.disconnect(true);
-  },60000)
+  // keepAlive[socket.id] = setTimeout(() => {
+  //   socket.disconnect(true);
+  // },60000)
 }

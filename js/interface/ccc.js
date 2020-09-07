@@ -10,9 +10,9 @@ let keepAliveCheck = {};
 module.exports = (socket, signalSocketio, redisInfo) => {
 
   //keepAlive
-  keepAliveCheck[socket.id] = setTimeout(() => {
-    socket.disconnect(true);
-  }, 60000)
+  // keepAliveCheck[socket.id] = setTimeout(() => {
+  //   socket.disconnect(true);
+  // }, 60000)
 
 
   const sessionId = socket.id;
