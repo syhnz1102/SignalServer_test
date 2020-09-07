@@ -517,5 +517,25 @@ exports.listParticipants = (url, handleId, socketId, janusRoomId) => {
     })
 }
 
+//Janus-gateway health check method
+exports.pingMediaServer = async (url) => {
+    return new Promise((resolve, reject) => {
+        let ws = new WebSocket('ws://' + url +':7011', 'janus-protocol');
 
+        let timeCheck = setTimeout(()=> {
+            resolve(false)
+        },1500)
 
+        ws.onerror = (error) => {
+            logger.error(`[ ## SIGNAL > JANUS ## ] ${JSON.stringify(error)}`);
+            resolve(false)
+        };
+
+        //연결 되었을 경우
+        ws.onopen = async () => {
+            ws.close();
+            clearTimeout(timeCheck)
+            resolve(true);
+        }
+    })
+}
