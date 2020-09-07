@@ -39,7 +39,7 @@ exports.getUserInfoBySocketId = function (redis, sessionId) {
 exports.setUserInfo = function (redis, userId, socketId, serviceType, type, roomId, cp) {
   return new Promise(resolve => {
     redis.hget("USER_INFO_BY_SOCKET_ID", socketId, (e, obj) => {
-      if (error || !obj) return resolve(-1);
+      if (!obj) return resolve(-1);
       let o = JSON.parse(obj);
       o.ID = userId;
       o.SERVICE_TYPE = serviceType;
