@@ -96,6 +96,9 @@ exports.codeToMsg = code => {
       case 500:
         resolve('Internal server error.');
         return;
+      case 504:
+        resolve('Internal server error.');
+        return;
       case 543:
         resolve('Request timeout');
         return;
