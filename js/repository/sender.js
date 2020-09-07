@@ -73,8 +73,8 @@ exports.coreConnector = {
             }
             // resolve({ code: String(res.statusCode) });
           } else {
-            if (!result) {
-              result = JSON.stringify({});
+            if (!result || typeof result !== 'object') {
+              return resolve({ code: 500 });
             }
             resolve({ code: String(res.statusCode), ...JSON.parse(result) });
           }
