@@ -1,6 +1,6 @@
 {
   "name": "signalserver",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "private": true,
   "description": "new signalserver since 2020.07.22.",
   "main": "SignalServer.js",
