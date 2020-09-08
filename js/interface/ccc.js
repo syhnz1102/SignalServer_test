@@ -14,7 +14,6 @@ module.exports = (socket, signalSocketio, redisInfo) => {
   //   socket.disconnect(true);
   // }, 60000)
 
-
   const sessionId = socket.id;
   socket.on('disconnect', async () => {
     logger.log('info', `[Socket : Disconnect Event] User Disconnection, Session Id is : ${sessionId}`);
