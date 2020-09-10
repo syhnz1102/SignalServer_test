@@ -2,6 +2,10 @@
 
 ## Release Note
 
+#### v1.1.3 (20/09/10)
+ - KeepAlive 타임아웃 적용 (60초, disconnect 없이 로그만 찍음)
+ - ExitRoom / Disconnect 구분 되도록 변경
+
 #### v1.1.2 (20/09/07)
  => 연동규격서 v1.0 반영
  - 개발 서버 dev.knowledgetalk.co.kr 도메인 반영 (9/8 적용 예정)

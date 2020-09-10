@@ -10,14 +10,16 @@ let keepAliveCheck = {};
 module.exports = (socket, signalSocketio, redisInfo) => {
 
   //keepAlive
-  // keepAliveCheck[socket.id] = setTimeout(() => {
-  //   socket.disconnect(true);
-  // }, 60000)
+  keepAliveCheck[socket.id] = setTimeout(() => {
+    // socket.disconnect(true);
+    logger.log('info', `[Socket : KeepAlive] KeepAlive Timeout!, Session Id is : ${socket.id}`);
+  }, 60000)
 
   const sessionId = socket.id;
   socket.on('disconnect', async () => {
+    delete keepAliveCheck[socket.id];
     logger.log('info', `[Socket : Disconnect Event] User Disconnection, Session Id is : ${sessionId}`);
-    await cccService.exitRoom(socket, redisInfo, sessionId, signalSocketio, true);
+    await cccService.disconnect(socket, redisInfo, sessionId, signalSocketio);
   });
   socket.on('knowledgetalk', async data => {
 
@@ -96,7 +98,7 @@ module.exports = (socket, signalSocketio, redisInfo) => {
         break;
 
       case 'ExitRoom':
-        await cccService.exitRoom(socket, redisInfo, sessionId, signalSocketio, false);
+        await cccService.exitRoom(socket, redisInfo, sessionId);
         break;
 
       case 'KeepAlive':

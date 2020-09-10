@@ -215,7 +215,7 @@ exports.changeItemInRoom = (redis, roomId, userId, item, value) => {
 }
 
 exports.leaveRoom = (redis, roomId, sessionId) => {
-  // FROM CCC: writen by ivypark
+  // FROM CCC: written by ivypark
   return new Promise(resolve => {
     redis.hget("ROOMS_INFO", roomId, (e, obj) => {
       let roomInfo = JSON.parse(obj);

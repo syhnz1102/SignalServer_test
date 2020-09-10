@@ -429,7 +429,32 @@ exports.changeName = async (data, sessionId, redis, socket) => {
   });
 }
 
-exports.exitRoom = async (socket, redis, sessionId, socketIo, isUnusual) => {
+exports.exitRoom = async (socket, redis, sessionId) => {
+  let o = await sync.getUserInfoBySocketId(redis, sessionId);
+  if (!o || !Object.keys(o).length) return;
+
+  let roomId = Object.keys(o.roomInfo)[0];
+  let userId = o.ID;
+  let cp = o.CP;
+  let roomInfo = await sync.getRoom(redis, roomId);
+
+  transaction(sessionId, {
+    eventOp: 'exit',
+    roomId: roomId,
+    userId: userId,
+    cpCode: cp || config.license.code,
+    ip: socket.request.connection._peername.address,
+    count: Object.keys(roomInfo.USERS).length
+  })
+
+  signalSocket.emit(sessionId, {
+    eventOp: "ExitRoom",
+    code: '200',
+    message: 'OK',
+  });
+}
+
+exports.disconnect = async (socket, redis, sessionId, socketIo) => {
   let o = await sync.getUserInfoBySocketId(redis, sessionId);
   if (!o || !Object.keys(o).length) return;
 
@@ -452,7 +477,7 @@ exports.exitRoom = async (socket, redis, sessionId, socketIo, isUnusual) => {
   }
 
   transaction(sessionId, {
-    eventOp: isUnusual?'disconnect':'exit',
+    eventOp: 'disconnect',
     roomId: roomId,
     userId: userId,
     cpCode: cp || config.license.code,
@@ -471,7 +496,7 @@ exports.exitRoom = async (socket, redis, sessionId, socketIo, isUnusual) => {
 }
 
 exports.keepAlive = async (socket, data, keepAlive) => {
-  // clearTimeout(keepAlive[socket.id]);
+  clearTimeout(keepAlive[socket.id]);
 
   signalSocket.emit(socket.id,{
     eventOp:'KeepAlive',
@@ -479,7 +504,8 @@ exports.keepAlive = async (socket, data, keepAlive) => {
     message: 'OK'
   })
 
-  // keepAlive[socket.id] = setTimeout(() => {
-  //   socket.disconnect(true);
-  // },60000)
+  keepAlive[socket.id] = setTimeout(() => {
+    // socket.disconnect(true);
+    logger.log('info', `[Socket : KeepAlive] KeepAlive Timeout!, Session Id is : ${socket.id}`);
+  },60000)
 }
