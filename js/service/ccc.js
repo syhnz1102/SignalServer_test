@@ -158,6 +158,86 @@ exports.roomJoin = async (data, sessionId, redis, socket, socketIo) => {
   }
 }
 
+exports.videoRoomJoin = async (data, sessionId, redis, socket, socketIo) => {
+  const uid = await utils.makeId();
+  logger.log('info', `[Socket : VideoRoomJoin Event] ${uid} User VideoRoomJoin, Session Id is : ${sessionId}, Room Id : ${data.roomId}`);
+
+  let previous = await sync.getRoom(redis, data.roomId);
+  if (!previous || !data.roomId) {
+    // Room 없거나 Error 시
+    signalSocket.emit(sessionId, {
+      eventOp: 'VideoRoomJoin',
+      code: '400',
+      message: await common.codeToMsg(400),
+      useMediaSvr: 'Y'
+    }, data);
+
+
+
+  } else {
+    // Room 있는 경우
+    await core.register(socket, redis);
+    await core.roomJoin(socketIo, socket, redis, { roomId: data.roomId });
+    await sync.setUserInfo(redis, uid, sessionId, 'multi', 'ccc', data.roomId, data.cpCode || config.license.code);
+    let enteredRoomInfo = await sync.enterRoom(redis, { uid, sessionId, roomId: data.roomId, userName: data.userName ? data.userName:'unknown' });
+
+    let videoRoomData = await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: true, type: 'cam', host: true });
+
+    if(videoRoomData.code && videoRoomData.code !== '200'){
+
+      signalSocket.room(data.roomId, {
+        eventOp: 'StartSession',
+        code: videoRoomData.code,
+        message: await common.codeToMsg(parseInt(videoRoomData.code))
+      });
+
+      return;
+    } else {
+      return;
+    }
+
+    signalSocket.emit(sessionId, {
+      eventOp: 'VideoRoomJoin',
+      code: '200',
+      message: await common.codeToMsg(200),
+      userId: uid,
+      members: enteredRoomInfo.USERS,
+      roomId: data.roomId,
+      // serverInfo: commonFn.serverInfo.getTurn()
+    }, data);
+
+    await transaction(sessionId, {
+      eventOp: 'join',
+      roomId: data.roomId,
+      cpCode: data.cpCode || config.license.code,
+      ip: socket.request.connection._peername.address,
+      userId: uid,
+      count: Object.keys(enteredRoomInfo.USERS).length
+    })
+
+    // 기존 진행된 통화가 다자간 통화였다면
+    try {
+      signalSocket.emit(sessionId, {
+        eventOp: 'StartSession',
+        useMediaSvr: 'Y',
+        members: enteredRoomInfo.USERS,
+        who: uid,
+        host: false
+      }, data);
+
+      signalSocket.broadcast(socket, data.roomId, {
+        signalOp: 'Presence',
+        members: enteredRoomInfo.USERS,
+        who: uid,
+        action: "join"
+      });
+
+    } catch (err) {
+      console.log("JOIN WITH JANUS ERROR", err);
+    }
+  }
+}
+
 exports.sdp = async (data, sessionId, redis, socket) => {
   if (data.code === '200') return false;
   const roomInfo = await sync.getRoom(redis, data.roomId);

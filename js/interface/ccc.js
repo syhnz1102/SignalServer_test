@@ -55,6 +55,10 @@ module.exports = (socket, signalSocketio, redisInfo) => {
         await cccService.roomJoin(data, sessionId, redisInfo, socket, signalSocketio);
         break;
 
+      case 'VideoRoomJoin':
+
+        break;
+
       case 'StartSession':
         break;
 
