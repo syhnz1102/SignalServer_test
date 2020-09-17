@@ -69,7 +69,7 @@ exports.createRoom = (redis, roomId) => {
   });
 }
 
-exports.enterRoom = (redis, { uid, userName, sessionId, roomId }) => {
+exports.enterRoom = (redis, { uid, userName, sessionId, roomId, multiType }) => {
   return new Promise(resolve => {
     redis.hget("ROOMS_INFO", roomId, function (error, obj) {
       if (error || !obj) return resolve(-1);
@@ -77,7 +77,9 @@ exports.enterRoom = (redis, { uid, userName, sessionId, roomId }) => {
       let roomInfo = JSON.parse(obj);
       roomInfo.USERS[uid] = { NAME: userName, sessionId };
       roomInfo.MULTITYPE = roomInfo.MULTITYPE === 'Y' ? 'Y' : (Object.keys(roomInfo.USERS).length > 2 ? 'Y' : 'N');
-
+      if(multiType){
+        roomInfo.MULTITYPE = 'Y'
+      }
       redis.hset("ROOMS_INFO", roomId, JSON.stringify(roomInfo));
       redis.hget("USER_INFO_BY_USER_ID", uid, (e, obj) => {
         let o = JSON.parse(obj);
