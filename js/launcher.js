@@ -3,6 +3,7 @@ const redis = require("ioredis");
 const ioRedis = require("socket.io-redis");
 
 const config = require('./config');
+const logger = require('./utils/logger')
 const initialize = require('./initializer');
 const doRunCCCIntf = require('./interface/ccc');
 
@@ -22,6 +23,7 @@ module.exports = app => {
   });
 
   const socketInfo = signalSocket.of('/SignalServer').on('connection', socket => {
+    logger.log('info', `[Socket : Connect Event] User Connection, Session Id is : ${socket.id}`);
     switch (config.serviceType) {
       case 'ccc':
         doRunCCCIntf(socket, socketInfo, redisInfo);

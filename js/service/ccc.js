@@ -181,31 +181,6 @@ exports.videoRoomJoin = async (data, sessionId, redis, socket, socketIo) => {
     await sync.setUserInfo(redis, uid, sessionId, 'multi', 'ccc', data.roomId, data.cpCode || config.license.code);
     let enteredRoomInfo = await sync.enterRoom(redis, { uid, sessionId, roomId: data.roomId, userName: data.userName ? data.userName:'unknown' });
 
-    let videoRoomData = await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: true, type: 'cam', host: true });
-
-    if(videoRoomData.code && videoRoomData.code !== '200'){
-
-      signalSocket.room(data.roomId, {
-        eventOp: 'StartSession',
-        code: videoRoomData.code,
-        message: await common.codeToMsg(parseInt(videoRoomData.code))
-      });
-
-      return;
-    } else {
-      return;
-    }
-
-    signalSocket.emit(sessionId, {
-      eventOp: 'VideoRoomJoin',
-      code: '200',
-      message: await common.codeToMsg(200),
-      userId: uid,
-      members: enteredRoomInfo.USERS,
-      roomId: data.roomId,
-      // serverInfo: commonFn.serverInfo.getTurn()
-    }, data);
-
     await transaction(sessionId, {
       eventOp: 'join',
       roomId: data.roomId,
@@ -214,26 +189,68 @@ exports.videoRoomJoin = async (data, sessionId, redis, socket, socketIo) => {
       userId: uid,
       count: Object.keys(enteredRoomInfo.USERS).length
     })
+    //처음 입장하는 경우
+    if(data.host){
+      let videoRoomData = await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: true, type: 'cam', host: true });
+      if(videoRoomData.code && videoRoomData.code !== '200'){
 
-    // 기존 진행된 통화가 다자간 통화였다면
-    try {
+        signalSocket.room(data.roomId, {
+          eventOp: 'StartSession',
+          code: videoRoomData.code,
+          message: await common.codeToMsg(parseInt(videoRoomData.code))
+        });
+
+        return;
+      }
+
+      //방장에게 보내는 Message
       signalSocket.emit(sessionId, {
         eventOp: 'StartSession',
         useMediaSvr: 'Y',
         members: enteredRoomInfo.USERS,
+        changeView: true,
         who: uid,
-        host: false
+        host: true
       }, data);
 
-      signalSocket.broadcast(socket, data.roomId, {
-        signalOp: 'Presence',
+      signalSocket.emit(sessionId, {
+        eventOp: 'VideoRoomJoin',
+        code: '200',
+        message: await common.codeToMsg(200),
+        userId: uid,
         members: enteredRoomInfo.USERS,
-        who: uid,
-        action: "join"
-      });
+        roomId: data.roomId
+      }, data);
+    }
+    //방장이 아니면 그대로 입장
+    else {
+      signalSocket.emit(sessionId, {
+        eventOp: 'VideoRoomJoin',
+        code: '200',
+        message: await common.codeToMsg(200),
+        userId: uid,
+        members: enteredRoomInfo.USERS,
+        roomId: data.roomId
+      }, data);
 
-    } catch (err) {
-      console.log("JOIN WITH JANUS ERROR", err);
+      try {
+        signalSocket.emit(sessionId,{
+          eventOp: 'StartSession',
+          useMediaSvr: 'Y',
+          members: enteredRoomInfo.USERS,
+          who: uid,
+          host: false
+        }, data);
+
+        signalSocket.broadcast(socket, data.roomId, {
+          signalOp: 'Presence',
+          members: enteredRoomInfo.USERS,
+          who: uid,
+          action: "join"
+        });
+      } catch (err) {
+        console.log("JOIN WITH JANUS ERROR", err);
+      }
     }
   }
 }
@@ -241,34 +258,73 @@ exports.videoRoomJoin = async (data, sessionId, redis, socket, socketIo) => {
 exports.sdp = async (data, sessionId, redis, socket) => {
   if (data.code === '200') return false;
   const roomInfo = await sync.getRoom(redis, data.roomId);
-  if (roomInfo.MULTITYPE && roomInfo.MULTITYPE === 'N') {
-    data.useMediaSvr = 'N';
-    signalSocket.broadcast(socket, data.roomId, data);
-  } else {
-    signalSocket.emit(sessionId, {
-      eventOp: data.eventOp,
-      reqNo: data.reqNo,
-      code: '200',
-      roomId: data.roomId,
-      message: await common.codeToMsg(200)
-    }, data);
 
-    try {
-      if (data.usage === 'cam') {
+  signalSocket.emit(sessionId, {
+    eventOp: data.eventOp,
+    reqNo: data.reqNo,
+    code: '200',
+    roomId: data.roomId,
+    message: await common.codeToMsg(200)
+  }, data);
 
-        if(!data.host && data.sdp.type === 'offer'){
-          let videoRoomData = await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: true, type: 'cam', host: false })
+  try {
+    if (data.usage === 'cam') {
 
-          if(videoRoomData.code && videoRoomData.code !== '200'){
-            signalSocket.room(data.roomId, {
-              eventOp: 'SDP',
-              code: videoRoomData.code,
-              message: await common.codeToMsg(parseInt(videoRoomData))
-            });
+      if(!data.host && data.sdp.type === 'offer'){
+        let videoRoomData = await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: true, type: 'cam', host: false })
 
-            return;
-          }
+        if(videoRoomData.code && videoRoomData.code !== '200'){
+          signalSocket.room(data.roomId, {
+            eventOp: 'SDP',
+            code: videoRoomData.code,
+            message: await common.codeToMsg(parseInt(videoRoomData))
+          });
 
+          return;
+        }
+
+      }
+
+      let result = await core.sdpVideoRoom(sessionId, redis, {
+        type: data.usage,
+        sdp: data.sdp,
+        roomId: data.roomId,
+        pluginId: data.pluginId
+      })
+
+      if (result.code && result.code !== '200') {
+        console.log('error');
+        return false;
+      }
+
+      if (data.sdp.type === 'offer') {
+        signalSocket.emit(sessionId, {
+          eventOp: 'SDP',
+          usage: data.usage,
+          userId: data.userId,
+          sdp: result.sdp,
+          roomId: data.roomId,
+          useMediaSvr: 'Y'
+        }, data);
+      }
+    } else if (data.usage === 'screen') {
+      if (data.sdp.type === 'offer') {
+        let videoRoomData = await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: false, type: 'screen' });
+
+        if(videoRoomData.code && videoRoomData.code !== '200'){
+          signalSocket.emit(sessionId, {
+            eventOp: 'SDP',
+            code: '570',
+            message: await common.codeToMsg(570)
+          }, data);
+
+          signalSocket.broadcast(socket, data.roomId, {
+            eventOp: 'SDP',
+            code: '570',
+            message: await common.codeToMsg(570)
+          });
+
+          return;
         }
 
         let result = await core.sdpVideoRoom(sessionId, redis, {
@@ -283,74 +339,32 @@ exports.sdp = async (data, sessionId, redis, socket) => {
           return false;
         }
 
-        if (data.sdp.type === 'offer') {
-          signalSocket.emit(sessionId, {
-            eventOp: 'SDP',
-            usage: data.usage,
-            userId: data.userId,
-            sdp: result.sdp,
-            roomId: data.roomId,
-            useMediaSvr: 'Y'
-          }, data);
-        }
-      } else if (data.usage === 'screen') {
-        if (data.sdp.type === 'offer') {
-          let videoRoomData = await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: false, type: 'screen' });
+        signalSocket.emit(sessionId, {
+          eventOp: 'SDP',
+          usage: data.usage,
+          userId: data.userId,
+          sdp: result.sdp,
+          roomId: data.roomId,
+          useMediaSvr: 'Y'
+        }, data);
+      } else {
+        let result = await core.sdpVideoRoom(sessionId, redis, {
+          type: data.usage,
+          sdp: data.sdp,
+          roomId: data.roomId,
+          pluginId: data.pluginId
+        })
 
-          if(videoRoomData.code && videoRoomData.code !== '200'){
-            signalSocket.emit(sessionId, {
-              eventOp: 'SDP',
-              code: '570',
-              message: await common.codeToMsg(570)
-            }, data);
-
-            signalSocket.broadcast(socket, data.roomId, {
-              eventOp: 'SDP',
-              code: '570',
-              message: await common.codeToMsg(570)
-            });
-
-            return;
-          }
-
-          let result = await core.sdpVideoRoom(sessionId, redis, {
-            type: data.usage,
-            sdp: data.sdp,
-            roomId: data.roomId,
-            pluginId: data.pluginId
-          })
-
-          if (result.code && result.code !== '200') {
-            console.log('error');
-            return false;
-          }
-
-          signalSocket.emit(sessionId, {
-            eventOp: 'SDP',
-            usage: data.usage,
-            userId: data.userId,
-            sdp: result.sdp,
-            roomId: data.roomId,
-            useMediaSvr: 'Y'
-          }, data);
-        } else {
-          let result = await core.sdpVideoRoom(sessionId, redis, {
-            type: data.usage,
-            sdp: data.sdp,
-            roomId: data.roomId,
-            pluginId: data.pluginId
-          })
-
-          if (result.code && result.code !== '200') {
-            console.log('error');
-            return false;
-          }
+        if (result.code && result.code !== '200') {
+          console.log('error');
+          return false;
         }
       }
-    } catch (err) {
-      console.log("SDP ERROR OCCURRED.", err);
     }
+  } catch (err) {
+    console.log("SDP ERROR OCCURRED.", err);
   }
+
 }
 
 exports.feedHandler = async (data, sessionId, redis) => {
