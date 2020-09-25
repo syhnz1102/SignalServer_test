@@ -216,7 +216,7 @@ const messageProcessor = async (message, socketId) => {
     }
 
     //publisher event 수신 시, subscriber로 입장
-    if(messageObj.janus == 'event' && messageObj.plugindata && messageObj.plugindata.data && messageObj.plugindata.data.publishers && messageObj.plugindata.data.publishers.length>0){
+    else if(messageObj.janus == 'event' && messageObj.plugindata && messageObj.plugindata.data && messageObj.plugindata.data.publishers && messageObj.plugindata.data.publishers.length>0){
         let publishers = messageObj.plugindata.data.publishers;
         let roomId = messageObj.plugindata.data.room;
 
@@ -240,7 +240,7 @@ const messageProcessor = async (message, socketId) => {
     }
 
     //화자감지
-    if(messageObj.janus == 'event' && messageObj.plugindata && messageObj.plugindata.data && messageObj.plugindata.data.videoroom && (messageObj.plugindata.data.videoroom == 'talking' || messageObj.plugindata.data.videoroom == 'stopped-talking')){
+    else if(messageObj.janus == 'event' && messageObj.plugindata && messageObj.plugindata.data && messageObj.plugindata.data.videoroom && (messageObj.plugindata.data.videoroom == 'talking' || messageObj.plugindata.data.videoroom == 'stopped-talking')){
         let roomId = messageObj.plugindata.data.room;
 
         //publisher로 join 했던 handle id 값으로 user 정보 가져오기
@@ -262,6 +262,23 @@ const messageProcessor = async (message, socketId) => {
         //room에 화자 정보 전송
         sendToRoom(syncData[messageObj.sender].socketId, roomId, data);
 
+    }
+
+    //slowlink event
+    else if(messageObj.janus === 'slowlink' && messageObj.video && messageObj.uplink && messageObj.lost > 10){
+        //publisher로 join 했던 handle id 값으로 user 정보 가져오기
+        syncData[messageObj.sender] = await syncFn.getUserInfoByHandleId(redisInfo, messageObj.sender).catch(err => {
+            logger.error(`[ ## SYNC > SIGNAL ### ] getUserInfoByHandleId error : ${err}`);
+        });
+
+        //client에 보낼 message
+        let data = {
+            signalOp:"presence",
+            action: 'slowlink'
+        }
+
+        //client에 sdpData 전송
+        sendToClient(syncData[messageObj.sender].socketId, data);
     }
 
     //받은 message를 resolve로 return
@@ -492,6 +509,26 @@ exports.sendAnswerForSubscriber = (url, handleId, janusRoomId, sdp, socketId) =>
                 room : janusRoomId
             },
             jsep : sdp
+        }
+
+        sendMsg(sockets[socketId], order, msg, resolve, reject);
+
+    })
+}
+
+//subscriber 가 answer 보내는 method
+exports.configureForSubscriber = (url, handleId, janusRoomId, sdp, socketId, video, audio) => {
+    return new Promise((resolve, reject) => {
+        let order = 'message';
+        let msg = {
+            janus : order,
+            session_id : sockets[socketId].janusSessionId,
+            handle_id : handleId,
+            body : {
+                request : 'configure',
+                video : video,
+                audio : audio
+            }
         }
 
         sendMsg(sockets[socketId], order, msg, resolve, reject);

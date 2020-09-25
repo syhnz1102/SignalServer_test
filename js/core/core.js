@@ -625,7 +625,6 @@ exports.disconnect = async (socket, redisInfo, socketIo) => {
           logger.error(`[ ## SYNC > SIGNAL ### ] getRoomDetail Error ${err}`);
         })
 
-        //TODO 방 정보가 없을 시 바로 종료
         if (!roomData) {
           logger.info(`[ ## SYNC > SIGNAL ### ] There is no such room in Sync Server`);
           resolve({
@@ -644,36 +643,14 @@ exports.disconnect = async (socket, redisInfo, socketIo) => {
             logger.error(`[ ## JANUS > SIGNAL ## ] leaveRoomAsPublisher : ${err}`);
           });
 
-          if(socketIo.adapter.rooms[roomId]){
-            userCount = socketIo.adapter.rooms[roomId].length;
+        }
 
-            //아무도 없으면 방 삭제
-            if(userCount == 0){
-              logger.info(`[ ## SIGNAL > SYNC ### ] delete room : ${roomId}`);
-              await syncFn.delRoom(redisInfo, roomId).catch(err => {
-                logger.error(`[ ## SYNC > SIGNAL ### ] delRoom Error ${err}`);
-              });
-            }
-          }
-
-          if (userCount < 1) {
-            logger.info(`[ ## SIGNAL > SYNC ### ] delete room : ${roomId}`);
-            await syncFn.delRoom(redisInfo, roomData.roomId).catch(err => {
-              logger.error(`[ ## SYNC > SIGNAL ### ] delRoom Error ${err}`);
-            })
-          }
-        } else {
-          if(socketIo.adapter.rooms[roomId]){
-            userCount = socketIo.adapter.rooms[roomId].length;
-
-            //아무도 없으면 방 삭제
-            if(userCount == 0){
-              logger.info(`[ ## SIGNAL > SYNC ### ] delete room : ${roomId}`);
-              await syncFn.delRoom(redisInfo, roomId).catch(err => {
-                logger.error(`[ ## SYNC > SIGNAL ### ] delRoom Error ${err}`);
-              });
-            }
-          }
+        //아무도 없으면 방 삭제
+        if(!socketIo.adapter.rooms[roomId] || (socketIo.adapter.rooms[roomId].length === 0)){
+          logger.info(`[ ## SIGNAL > SYNC ### ] delete room : ${roomId}`);
+          await syncFn.delRoom(redisInfo, roomId).catch(err => {
+            logger.error(`[ ## SYNC > SIGNAL ### ] delRoom Error ${err}`);
+          });
         }
 
         socket.leave(roomData.roomId);
