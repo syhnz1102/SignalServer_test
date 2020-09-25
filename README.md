@@ -2,6 +2,9 @@
 
 ## Release Note
 
+#### v1.1.4 (20/09/25)
+ - VideoRoomJoin Op 추가 (Media Server 통해서만 통신할 수 있도록)
+
 #### v1.1.3 (20/09/10)
  - KeepAlive 타임아웃 적용 (60초, disconnect 없이 로그만 찍음)
  - ExitRoom / Disconnect 구분 되도록 변경
