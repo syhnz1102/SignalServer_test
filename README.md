@@ -2,7 +2,7 @@
 
 ## Release Note
 
-#### v1.1.4 (20/09/25)
+#### v1.1.5 (20/09/25)
  - VideoRoomJoin Op 추가 (Media Server 통해서만 통신할 수 있도록)
 
 #### v1.1.3 (20/09/10)
