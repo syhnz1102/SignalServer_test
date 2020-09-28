@@ -606,3 +606,11 @@ exports.keepAlive = async (socket, data, keepAlive) => {
     logger.log('info', `[Socket : KeepAlive] KeepAlive Timeout!, Session Id is : ${socket.id}`);
   },60000)
 }
+
+exports.chat = async (data, sessionId, redis, socket) => {
+  signalSocket.broadcast(socket, data.roomId, {
+    signalOp: 'Chat',
+    userId: data.userId,
+    message: data.message
+  })
+}
