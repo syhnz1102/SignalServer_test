@@ -390,6 +390,14 @@ exports.sdpVideoRoom = async (socketId, redisInfo, reqData) => {
         return;
       });
 
+      if(janusResData[socketId].janus === 'error'){
+        delete janusResData[socketId];
+        resolve({
+          code: '570'
+        });
+        return;
+      }
+
       sendData.sdp = janusResData[socketId].jsep;
 
       resolve(sendData);
@@ -402,6 +410,14 @@ exports.sdpVideoRoom = async (socketId, redisInfo, reqData) => {
         });
         return;
       });
+
+      if(janusResData[socketId].janus === 'error'){
+        delete janusResData[socketId];
+        resolve({
+          code: '570'
+        });
+        return;
+      }
 
       resolve({
         code: '200'
