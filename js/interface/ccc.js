@@ -108,6 +108,10 @@ module.exports = (socket, signalSocketio, redisInfo) => {
       case 'KeepAlive':
         await cccService.keepAlive(socket, data, keepAliveCheck);
         break;
+
+      case 'Chat':
+        await cccService.chat(data, sessionId, redisInfo, socket);
+        break;
     }
   });
 }
