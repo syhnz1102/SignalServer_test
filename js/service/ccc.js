@@ -614,3 +614,43 @@ exports.chat = async (data, sessionId, redis, socket) => {
     message: data.message
   })
 }
+
+exports.startCall = async (data, sessionId, redis, socket) => {
+
+  // transaction(sessionId, {
+  //   eventOp: 'StartCall',
+  //   roomId: data.roomId,
+  //   userId: data.userId,
+  //   cpCode: data.cpCode || config.license.code,
+  //   ip: socket.request.connection._peername.address
+  // })
+
+  signalSocket.emit(socket.id,{
+    eventOp: 'StartCall',
+    code: '200',
+    message: 'OK'
+  })
+}
+
+exports.endCall = async (data, sessionId, redis, socket) => {
+
+  // transaction(sessionId, {
+  //   eventOp: 'EndCall',
+  //   roomId: data.roomId,
+  //   userId: data.userId,
+  //   cpCode: data.cpCode || config.license.code,
+  //   ip: socket.request.connection._peername.address
+  // })
+
+  signalSocket.emit(socket.id,{
+    eventOp: 'EndCall',
+    code: '200',
+    message: 'OK'
+  })
+
+  signalSocket.broadcast(socket, data.roomId, {
+    signalOp: 'Presence',
+    userId: data.userId,
+    action: 'endCall'
+  });
+}

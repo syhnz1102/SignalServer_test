@@ -112,6 +112,14 @@ module.exports = (socket, signalSocketio, redisInfo) => {
       case 'Chat':
         await cccService.chat(data, sessionId, redisInfo, socket);
         break;
+
+      case 'StartCall':
+        await cccService.startCall(data, sessionId, redisInfo, socket);
+        break;
+
+      case 'EndCall':
+        await cccService.endCall(data, sessionId, redisInfo, socket);
+        break;
     }
   });
 }
