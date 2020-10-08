@@ -606,3 +606,37 @@ exports.keepAlive = async (socket, data, keepAlive) => {
     logger.log('info', `[Socket : KeepAlive] KeepAlive Timeout!, Session Id is : ${socket.id}`);
   },60000)
 }
+
+exports.startCall = async (data, sessionId, redis, socket) => {
+
+  transaction(sessionId, {
+    eventOp: 'StartCall',
+    roomId: data.roomId,
+    userId: data.userId,
+    cpCode: data.cpCode || config.license.code,
+    ip: socket.request.connection._peername.address
+  })
+
+  signalSocket.emit(socket.id,{
+    eventOp:'StartCall',
+    code: '200',
+    message: 'OK'
+  })
+}
+
+exports.endCall = async (data, sessionId, redis, socket) => {
+
+  transaction(sessionId, {
+    eventOp: 'EndCall',
+    roomId: data.roomId,
+    userId: data.userId,
+    cpCode: data.cpCode || config.license.code,
+    ip: socket.request.connection._peername.address
+  })
+
+  signalSocket.emit(socket.id,{
+    eventOp:'EndCall',
+    code: '200',
+    message: 'OK'
+  })
+}
