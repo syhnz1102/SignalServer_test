@@ -15,7 +15,10 @@ exports.signalSocket = {
       respData.sdp.sdp = "SDP info..."
     }
 
-    logger.log('info', `[ ### SIGNAL > WEB ### ] : ${JSON.stringify(respData)}`);
+    if(respData.eventOp !== 'KeepAlive'){
+      logger.log('info', `[ ### SIGNAL > WEB ### ] : ${JSON.stringify(respData)}`);
+    }
+
   },
   broadcast: (socket, roomId, respData, reqData) => {
     if (!roomId || !respData) {
