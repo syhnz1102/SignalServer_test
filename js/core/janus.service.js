@@ -30,6 +30,9 @@ let url_janus = {}
 //sessionId를 key 값으로 url 값을 저장하고 있는 객체
 let sessionId_url = {}
 
+//sessionId를 key 값으로 socket id 값을 저장하고 있는 객체
+let sessionId_sockets = {};
+
 //응답 message 저장하고 있는 객체
 let janusResData = {}
 
@@ -71,6 +74,7 @@ const createWebSocket = (url, socketId, resolve, reject) => {
             ws['janusSessionId'] = res.data.id;
             //sessionId를 key값으로 url 저장
             sessionId_url[res.data.id] = url;
+            sessionId_sockets[res.data.id] = socketId
 
             //keepalive message 재귀 함수 이용하여 계속 전송
             let keepAliveInterval = setInterval(()=>{
@@ -103,6 +107,7 @@ const createWebSocket = (url, socketId, resolve, reject) => {
         //websocket 정보 삭제
         if(url_janus[url]){
             delete sessionId_url[url_janus[url].janusSessionId];
+            delete sessionId_sockets[url_janus[url].janusSessionId];
             delete url_janus[url];
         }
 
@@ -256,7 +261,7 @@ const messageProcessor = async (message, socketId) => {
         let data = {
             signalOp:"Presence",
             who: uidForCCC && uidForCCC.ID? uidForCCC.ID:syncData[messageObj.sender].socketId,
-            talking: messageObj.plugindata.data.videoroom == 'talking'? true:false,
+            talking: messageObj.plugindata.data.videoroom === 'talking'
         }
 
         //room에 화자 정보 전송
@@ -265,20 +270,16 @@ const messageProcessor = async (message, socketId) => {
     }
 
     //slowlink event
-    else if(messageObj.janus === 'slowlink' && messageObj.video && messageObj.uplink && messageObj.lost > 10){
-        //publisher로 join 했던 handle id 값으로 user 정보 가져오기
-        syncData[messageObj.sender] = await syncFn.getUserInfoByHandleId(redisInfo, messageObj.sender).catch(err => {
-            logger.error(`[ ## SYNC > SIGNAL ### ] getUserInfoByHandleId error : ${err}`);
-        });
+    else if(messageObj.janus === 'slowlink'){
 
-        //client에 보낼 message
-        let data = {
-            signalOp:"presence",
-            action: 'slowlink'
-        }
-
-        //client에 sdpData 전송
-        sendToClient(syncData[messageObj.sender].socketId, data);
+        // //client에 보낼 message
+        // let data = {
+        //     signalOp: 'Presence',
+        //     action: 'slowlink'
+        // }
+        //
+        // //client에 sdpData 전송
+        // sendToClient(sessionId_sockets[messageObj.session_id], data);
     }
 
     //받은 message를 resolve로 return
