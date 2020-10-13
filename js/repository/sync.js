@@ -22,7 +22,7 @@ exports.getRoom = function (redis, roomId) {
 exports.getUserInfoByUserId = function (redis, userId) {
   return new Promise(resolve => {
     redis.hget("USER_INFO_BY_USER_ID", userId, (e, obj) => {
-      if (error || !obj) return resolve(-1);
+      if (e || !obj) return resolve(-1);
       resolve(JSON.parse(obj));
     });
   });
@@ -75,6 +75,7 @@ exports.enterRoom = (redis, { uid, userName, sessionId, roomId, multiType }) => 
       if (error || !obj) return resolve(-1);
 
       let roomInfo = JSON.parse(obj);
+      roomInfo.ADMIN = !roomInfo.ADMIN ? sessionId : roomInfo.ADMIN;
       roomInfo.USERS[uid] = { NAME: userName, sessionId };
       roomInfo.MULTITYPE = roomInfo.MULTITYPE === 'Y' ? 'Y' : (Object.keys(roomInfo.USERS).length > 2 ? 'Y' : 'N');
       if(multiType){

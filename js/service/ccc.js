@@ -616,14 +616,13 @@ exports.chat = async (data, sessionId, redis, socket) => {
 }
 
 exports.startCall = async (data, sessionId, redis, socket) => {
-
-  // transaction(sessionId, {
-  //   eventOp: 'StartCall',
-  //   roomId: data.roomId,
-  //   userId: data.userId,
-  //   cpCode: data.cpCode || config.license.code,
-  //   ip: socket.request.connection._peername.address
-  // })
+  transaction(sessionId, {
+    eventOp: 'StartCall',
+    roomId: data.roomId,
+    userId: data.userId,
+    cpCode: data.cpCode || config.license.code,
+    ip: socket.request.connection._peername.address
+  })
 
   signalSocket.emit(socket.id,{
     eventOp: 'StartCall',
@@ -633,14 +632,13 @@ exports.startCall = async (data, sessionId, redis, socket) => {
 }
 
 exports.endCall = async (data, sessionId, redis, socket) => {
-
-  // transaction(sessionId, {
-  //   eventOp: 'EndCall',
-  //   roomId: data.roomId,
-  //   userId: data.userId,
-  //   cpCode: data.cpCode || config.license.code,
-  //   ip: socket.request.connection._peername.address
-  // })
+  transaction(sessionId, {
+    eventOp: 'EndCall',
+    roomId: data.roomId,
+    userId: data.userId,
+    cpCode: data.cpCode || config.license.code,
+    ip: socket.request.connection._peername.address
+  })
 
   signalSocket.emit(socket.id,{
     eventOp: 'EndCall',
@@ -653,4 +651,43 @@ exports.endCall = async (data, sessionId, redis, socket) => {
     userId: data.userId,
     action: 'endCall'
   });
+}
+
+exports.kickOut = async (data, sessionId, redis, socket) => {
+  if (!data.roomId || !data.userId) {
+    signalSocket.emit(socket.id,{
+      eventOp: 'KickOut',
+      code: '400',
+      message: 'Request Error.'
+    })
+  }
+
+  transaction(sessionId, {
+    eventOp: 'KickOut',
+    roomId: data.roomId,
+    userId: data.userId,
+    cpCode: data.cpCode || config.license.code,
+    ip: socket.request.connection._peername.address
+  })
+
+  const obj = await sync.getRoom(redis, data.roomId);
+  if (obj.ADMIN !== sessionId) {
+    return signalSocket.emit(socket.id,{
+      eventOp: 'KickOut',
+      code: '413',
+      message: 'Permission Error.'
+    })
+  } else {
+    signalSocket.emit(socket.id,{
+      eventOp: 'KickOut',
+      code: '200',
+      message: 'OK'
+    })
+
+    signalSocket.emit((await sync.getUserInfoByUserId(redis, data.userId)).SOCKET_ID, {
+      signalOp: 'Presence',
+      userId: data.userId,
+      action: 'kick'
+    });
+  }
 }

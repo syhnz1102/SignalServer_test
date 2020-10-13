@@ -120,6 +120,10 @@ module.exports = (socket, signalSocketio, redisInfo) => {
       case 'EndCall':
         await cccService.endCall(data, sessionId, redisInfo, socket);
         break;
+
+      case 'KickOut':
+        await cccService.kickOut(data, sessionId, redisInfo, socket);
+        break;
     }
   });
 }
