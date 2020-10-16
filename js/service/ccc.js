@@ -60,7 +60,6 @@ exports.destroyRoom = async (data, sessionId, redis, socket) => {
 
 exports.roomJoin = async (data, sessionId, redis, socket, socketIo) => {
   const uid = await utils.makeId();
-  logger.log('info', `[Socket : RoomJoin Event] ${uid} User RoomJoin, Session Id is : ${sessionId}, Room Id : ${data.roomId}`);
 
   let previous = await sync.getRoom(redis, data.roomId);
   if (!previous || !data.roomId) {
