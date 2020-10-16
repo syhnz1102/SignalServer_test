@@ -1,3 +1,12 @@
+const common = require('../utils/common')
+
+const rejectCode = (async () => {
+  return {
+    code: '500',
+    message: await common.codeToMsg(500)
+  }
+})();
+
 exports.getRoom = function (redis, roomId) {
   return new Promise(function (resolve, reject) {
     if (!roomId) {
@@ -36,7 +45,7 @@ exports.getUserInfoBySocketId = function (redis, sessionId) {
   });
 };
 
-exports.setUserInfo = function (redis, userId, socketId, serviceType, type, roomId, cp) {
+exports.setUserInfo = function (redis, userId, socketId, serviceType, type, roomId, cp, p2p_start, p2p_end, n2n_start, n2n_end) {
   return new Promise(resolve => {
     redis.hget("USER_INFO_BY_SOCKET_ID", socketId, (e, obj) => {
       if (!obj) return resolve(-1);
@@ -45,8 +54,13 @@ exports.setUserInfo = function (redis, userId, socketId, serviceType, type, room
       o.SERVICE_TYPE = serviceType;
       o.TYPE = type;
       o.CP = cp;
+      o.P2P_START = o.P2P_START? o.P2P_START:p2p_start;
+      o.P2P_END = o.P2P_END? o.P2P_END:p2p_end;
+      o.N2N_START = o.N2N_START? o.N2N_START: n2n_start;
+      o.N2N_END = n2n_end;
+
       redis.hset("USER_INFO_BY_SOCKET_ID", socketId, JSON.stringify(o), () => {
-        let userIdData = {SOCKET_ID: socketId, ROOM_ID: "", SERVICE_TYPE: serviceType, TYPE: type, CP: cp};
+        let userIdData = {SOCKET_ID: socketId, ROOM_ID: "", SERVICE_TYPE: serviceType, TYPE: type, CP: cp, P2P_START: p2p_start, P2P_END: p2p_end, N2N_START: n2n_start, N2N_END: n2n_end};
         redis.hset("USER_INFO_BY_USER_ID", userId, JSON.stringify(userIdData));
         resolve();
       });
@@ -54,6 +68,17 @@ exports.setUserInfo = function (redis, userId, socketId, serviceType, type, room
   });
 };
 
+exports.setUserInfoWithSocketId = (redis, sessionId, data) => {
+  return new Promise((resolve, reject) => {
+    redis.hset("USER_INFO_BY_SOCKET_ID", sessionId, JSON.stringify(data), error => {
+      if(error){
+        reject(rejectCode);
+        return false;
+      }
+      resolve();
+    })
+  })
+};
 exports.createRoom = (redis, roomId) => {
   return new Promise(resolve => {
     redis.hget("ROOMS_INFO", roomId, function (error, obj) {

@@ -16,7 +16,7 @@ exports.signalSocket = {
     }
 
     if(respData.eventOp !== 'KeepAlive'){
-      logger.log('info', `[ ### SIGNAL > WEB ### ] : ${JSON.stringify(respData)}`);
+      logger.log('info', `[ ### SIGNAL > WEB ### ] ${JSON.stringify(respData)}`);
     }
 
   },
@@ -28,7 +28,7 @@ exports.signalSocket = {
     socket.broadcast.to(roomId).emit('knowledgetalk', respData);
   },
   room: (roomId, respData, reqData) => {
-    logger.log('info', `[ ### SIGNAL > WEB ### ] : ${JSON.stringify(respData)}`);
+    logger.log('info', `[ ### SIGNAL > WEB ### ] ${JSON.stringify(respData)}`);
     serverInfo.signal.to(roomId).emit('knowledgetalk', respData);
   }
 };
@@ -37,6 +37,7 @@ exports.coreConnector = {
   start: async (sessionId, type, url, body) => {
     // 190515 ivypark, Core REST 변경 건으로 인한 수정
     const base = await serverInfo.getCore();
+    logger.log('info', `[ ### SIGNAL > CORE ## ] ${JSON.stringify(body)}`);
     return new Promise((resolve, reject) => {
 
       let time = setTimeout(async () => {
@@ -56,7 +57,7 @@ exports.coreConnector = {
 
       let OPTIONS = {
         headers: {'Content-Type': 'application/json'},
-        url: `${base}/platform/v1/${url}`,
+        url: `${base}/conference/v1/${url}`,
         body: JSON.stringify(body)
       };
 
@@ -79,6 +80,7 @@ exports.coreConnector = {
             if (!result) {
               return resolve({ code: 500 });
             }
+            logger.log('info', `[ ## CORE > SIGNAL ### ] ${result}`);
             resolve({ code: String(res.statusCode), ...JSON.parse(result) });
           }
         }

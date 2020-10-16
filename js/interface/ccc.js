@@ -27,20 +27,20 @@ module.exports = (socket, signalSocketio, redisInfo) => {
     if(data.eventOp === 'SDP' && data.sdp && data.sdp.sdp) {
       let sdpReqData = data.sdp.sdp;
       data.sdp.sdp = "sdp info...";
-      logger.log('info', `[ ### WEB > SIGNAL ### ] : ${JSON.stringify(data)}`);
+      logger.log('info', `[ ### WEB > SIGNAL ### ] ${JSON.stringify(data)}`);
       data.sdp.sdp = sdpReqData;
     } else if(data.eventOp !== 'KeepAlive') {
-      logger.log('info', `[ ### WEB > SIGNAL ### ] : ${JSON.stringify(data)}`);
+      logger.log('info', `[ ### WEB > SIGNAL ### ] ${JSON.stringify(data)}`);
     }
-
-    const isChecked = await checker(sessionId, data);
-    if (!isChecked) {
-      signalSocket.emit(sessionId, {
-        code: '413',
-        message: await common.codeToMsg(413)
-      });
-      return false;
-    }
+    //
+    // const isChecked = await checker(sessionId, data);
+    // if (!isChecked) {
+    //   signalSocket.emit(sessionId, {
+    //     code: '413',
+    //     message: await common.codeToMsg(413)
+    //   });
+    //   return false;
+    // }
 
     switch (data.eventOp || data.signalOp) {
       case 'CreateRoom':
@@ -48,7 +48,7 @@ module.exports = (socket, signalSocketio, redisInfo) => {
         break;
 
       case 'DestroyRoom':
-        await cccService.destroyRoom(data, sessionId, redisInfo);
+        await cccService.destroyRoom(data, sessionId, redisInfo, socket);
         break;
 
       case 'RoomJoin':
@@ -74,15 +74,15 @@ module.exports = (socket, signalSocketio, redisInfo) => {
         break;
 
       case 'SendFeed':
-        await cccService.feedHandler(data, sessionId, redisInfo);
+        await cccService.feedHandler(data, sessionId, redisInfo, socket);
         break;
 
       case 'SessionReserve':
-        await cccService.sessionReserve(data, sessionId, redisInfo);
+        await cccService.sessionReserve(data, sessionId, redisInfo, socket);
         break;
 
       case 'SessionReserveEnd':
-        await cccService.endSessionReserve(data, sessionId, redisInfo);
+        await cccService.endSessionReserve(data, sessionId, redisInfo, socket);
         break;
 
       case 'ScreenShareConferenceEnd':
