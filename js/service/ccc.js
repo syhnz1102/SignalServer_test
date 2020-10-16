@@ -332,7 +332,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
     signalSocket.broadcast(socket, data.roomId, data);
 
     await transaction(sessionId, {
-      opCode: `SDP(${data.sdp.type}/${data.usage})`,
+      opCode: `SDP(${data.sdp.type}_${data.usage})`,
       roomId: data.roomId,
       cpCode: data.cpCode || config.license.code,
       clientIp: socket.request.connection._peername.address,
@@ -354,6 +354,29 @@ exports.sdp = async (data, sessionId, redis, socket) => {
       if (data.usage === 'cam') {
 
         if(!data.host && data.sdp.type === 'offer'){
+          let userData = await sync.getUserInfoBySocketId(redis, sessionId);
+
+          //P2P 종료로 인해 과금 반영
+          if(userData.P2P_START){
+            userData.P2P_END = commonFn.getDate();
+
+            await charging(sessionId, {
+              cpCode: data.cpCode,
+              userId: data.userId,
+              userName: userData.userName?userData.userName:'익명',
+              clientIp: socket.request.connection._peername.address,
+              roomId: data.roomId,
+              startDate: userData.P2P_START,
+              usageTime: commonFn.usageTime(userData.P2P_START, userData.P2P_END),
+              usageType: 'P2P'
+            })
+
+            userData.P2P_START = '';
+            userData.P2P_END = '';
+            await sync.setUserInfoWithSocketId(redis, sessionId, userData);
+          }
+
+          //다자간 전환을 위해 Media Server VideoRoom Join
           let videoRoomData = await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: true, type: 'cam', host: false })
 
           if(videoRoomData.code && videoRoomData.code !== '200'){
@@ -364,7 +387,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
             });
 
             await transaction(sessionId, {
-              opCode: 'SDP(offer/cam)',
+              opCode: 'SDP(offer_cam)',
               roomId: data.roomId,
               cpCode: data.cpCode || config.license.code,
               clientIp: socket.request.connection._peername.address,
@@ -388,7 +411,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
           console.log('error');
 
           await transaction(sessionId, {
-            opCode: `SDP(${data.sdp.type}/cam)`,
+            opCode: `SDP(${data.sdp.type}_cam)`,
             roomId: data.roomId,
             cpCode: data.cpCode || config.license.code,
             clientIp: socket.request.connection._peername.address,
@@ -410,7 +433,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
           }, data);
 
           await transaction(sessionId, {
-            opCode: 'SDP(offer/cam)',
+            opCode: 'SDP(offer_cam)',
             roomId: data.roomId,
             cpCode: data.cpCode || config.license.code,
             clientIp: socket.request.connection._peername.address,
@@ -419,7 +442,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
           })
 
           await transaction(sessionId, {
-            opCode: 'SDP(answer/cam)',
+            opCode: 'SDP(answer_cam)',
             roomId: data.roomId,
             cpCode: data.cpCode || config.license.code,
             clientIp: socket.request.connection._peername.address,
@@ -434,7 +457,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
 
         } else {
           transaction(sessionId, {
-            opCode: 'SDP(answer/cam)',
+            opCode: 'SDP(answer_cam)',
             roomId: data.roomId,
             cpCode: data.cpCode || config.license.code,
             clientIp: socket.request.connection._peername.address,
@@ -461,7 +484,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
             });
 
             transaction(sessionId, {
-              opCode: 'SDP(offer/screen)',
+              opCode: 'SDP(offer_screen)',
               roomId: data.roomId,
               cpCode: data.cpCode || config.license.code,
               clientIp: socket.request.connection._peername.address,
@@ -483,7 +506,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
             console.log('error');
 
             transaction(sessionId, {
-              opCode: 'SDP(offer/screen)',
+              opCode: 'SDP(offer_screen)',
               roomId: data.roomId,
               cpCode: data.cpCode || config.license.code,
               clientIp: socket.request.connection._peername.address,
@@ -504,7 +527,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
           }, data);
 
           await transaction(sessionId, {
-            opCode: 'SDP(offer/screen)',
+            opCode: 'SDP(offer_screen)',
             roomId: data.roomId,
             cpCode: data.cpCode || config.license.code,
             clientIp: socket.request.connection._peername.address,
@@ -513,7 +536,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
           })
 
           await transaction(sessionId, {
-            opCode: 'SDP(answer/screen)',
+            opCode: 'SDP(answer_screen)',
             roomId: data.roomId,
             cpCode: data.cpCode || config.license.code,
             clientIp: socket.request.connection._peername.address,
@@ -533,7 +556,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
           if (result.code && result.code !== '200') {
 
             await transaction(sessionId, {
-              opCode: 'SDP(answer/screen)',
+              opCode: 'SDP(answer_screen)',
               roomId: data.roomId,
               cpCode: data.cpCode || config.license.code,
               clientIp: socket.request.connection._peername.address,
@@ -546,7 +569,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
           } else {
 
             await transaction(sessionId, {
-              opCode: 'SDP(answer/screen)',
+              opCode: 'SDP(answer_screen)',
               roomId: data.roomId,
               cpCode: data.cpCode || config.license.code,
               clientIp: socket.request.connection._peername.address,
@@ -831,9 +854,7 @@ exports.exitRoom = async (socket, redis, sessionId) => {
   let cp = o.CP;
   let roomInfo = await sync.getRoom(redis, roomId);
 
-  if(roomInfo.MULTITYPE && roomInfo.MULTITYPE === 'N'){
-    o.P2P_END = o.P2P_END?o.P2P_END:commonFn.getDate();
-    await sync.setUserInfoWithSocketId(redis, sessionId, o);
+  if(roomInfo.MULTITYPE && roomInfo.MULTITYPE === 'N' && o.P2P_START){
 
     await charging(sessionId, {
       cpCode: cp,
@@ -846,11 +867,12 @@ exports.exitRoom = async (socket, redis, sessionId) => {
       usageType: 'P2P'
     })
 
+    o.P2P_START = '';
+    o.P2P_END = '';
+    await sync.setUserInfoWithSocketId(redis, sessionId, o);
   }
 
-  else if(roomInfo.MULTITYPE && roomInfo.MULTITYPE === 'Y'){
-    o.N2N_END = o.N2N_END?o.N2N_END:commonFn.getDate();
-    await sync.setUserInfoWithSocketId(redis, sessionId, o);
+  else if(roomInfo.MULTITYPE && roomInfo.MULTITYPE === 'Y' && o.N2N_START){
 
     if(o.P2P_START && o.P2P_END){
       await charging(sessionId, {
@@ -863,6 +885,10 @@ exports.exitRoom = async (socket, redis, sessionId) => {
         usageTime: commonFn.usageTime(o.P2P_START, o.P2P_END),
         usageType: 'P2P'
       })
+
+      //과금 반영 후 Sync Server 시간정보 초기화
+      o.P2P_START = '';
+      o.P2P_END = '';
     }
 
     await charging(sessionId, {
@@ -875,6 +901,11 @@ exports.exitRoom = async (socket, redis, sessionId) => {
       usageTime: commonFn.usageTime(o.N2N_START, o.N2N_END),
       usageType: 'N2N'
     })
+
+    //과금 반영 후 Sync Server 시간정보 초기화
+    o.N2N_START = '';
+    o.N2N_END = '';
+    await sync.setUserInfoWithSocketId(redis, sessionId, o);
 
   }
 
@@ -907,10 +938,8 @@ exports.disconnect = async (socket, redis, sessionId, socketIo) => {
   let cp = o.CP;
   let roomInfo = await sync.getRoom(redis, roomId);
 
-  if(roomInfo.MULTITYPE && roomInfo.MULTITYPE === 'N'){
-    o.P2P_END = o.P2P_END?o.P2P_END:commonFn.getDate();
-    await sync.setUserInfoWithSocketId(redis, sessionId, o);
-
+  if(roomInfo.MULTITYPE && roomInfo.MULTITYPE === 'N' && o.P2P_START){
+    o.P2P_END = commonFn.getDate()
     await charging(sessionId, {
       cpCode: cp,
       userId: userId,
@@ -922,14 +951,17 @@ exports.disconnect = async (socket, redis, sessionId, socketIo) => {
       usageType: 'P2P'
     })
 
+    //과금 반영 후 Sync Server 시간정보 초기화
+    o.P2P_START = '';
+    o.P2P_END = '';
+    await sync.setUserInfoWithSocketId(redis, sessionId, o);
   }
 
-  else if(roomInfo.MULTITYPE && roomInfo.MULTITYPE === 'Y'){
-    o.N2N_END = o.N2N_END?o.N2N_END:commonFn.getDate();
-    await sync.setUserInfoWithSocketId(redis, sessionId, o);
+  else if(roomInfo.MULTITYPE && roomInfo.MULTITYPE === 'Y' && o.N2N_START){
 
     //N2N 전환 전 P2P를 사용했다면 과금 반영
     if(o.P2P_START && o.P2P_END){
+
       await charging(sessionId, {
         cpCode: cp,
         userId: userId,
@@ -940,8 +972,13 @@ exports.disconnect = async (socket, redis, sessionId, socketIo) => {
         usageTime: commonFn.usageTime(o.P2P_START, o.P2P_END),
         usageType: 'P2P'
       })
+
+      //과금 반영 후 Sync Server 시간정보 초기화
+      o.P2P_START = '';
+      o.P2P_END = '';
     }
 
+    o.N2N_END = commonFn.getDate();
     await charging(sessionId, {
       cpCode: cp,
       userId: userId,
@@ -952,6 +989,11 @@ exports.disconnect = async (socket, redis, sessionId, socketIo) => {
       usageTime: commonFn.usageTime(o.N2N_START, o.N2N_END),
       usageType: 'N2N'
     })
+
+    //과금 반영 후 Sync Server 시간정보 초기화
+    o.N2N_START = '';
+    o.N2N_END = '';
+    await sync.setUserInfoWithSocketId(redis, sessionId, o);
 
   }
 
@@ -1002,19 +1044,6 @@ exports.keepAlive = async (socket, data, keepAlive) => {
 
 exports.startCall = async (data, sessionId, redis, socket) => {
 
-  let userData = await sync.getUserInfoBySocketId(redis, sessionId);
-  let roomData = await sync.getRoom(redis, data.roomId);
-
-  if(roomData.MULTITYPE && roomData.MULTITYPE === 'N'){
-    userData.P2P_START = commonFn.getDate()
-    await sync.setUserInfoWithSocketId(redis, sessionId, userData)
-  }
-
-  else if(roomData.MULTITYPE && roomData.MULTITYPE === 'Y'){
-    userData.N2N_START = commonFn.getDate()
-    await sync.setUserInfoWithSocketId(redis, sessionId, userData);
-  }
-
   await transaction(sessionId, {
     opCode: 'StartCall',
     roomId: data.roomId,
@@ -1036,13 +1065,44 @@ exports.endCall = async (data, sessionId, redis, socket) => {
   let userData = await sync.getUserInfoBySocketId(redis, sessionId);
   let roomData = await sync.getRoom(redis, data.roomId);
 
-  if(roomData.MULTITYPE && roomData.MULTITYPE === 'N'){
+  if(roomData.MULTITYPE && roomData.MULTITYPE === 'N' && userData.P2P_START){
     userData.P2P_END = commonFn.getDate();
+
+    await charging(sessionId, {
+      cpCode: data.cpCode,
+      userId: data.userId,
+      userName: userData.userName?userData.userName:'익명',
+      clientIp: socket.request.connection._peername.address,
+      roomId: data.roomId,
+      startDate: userData.P2P_START,
+      usageTime: commonFn.usageTime(userData.P2P_START, userData.P2P_END),
+      usageType: 'P2P'
+    })
+
+    //과금 반영 후 Sync Server 시간정보 초기화
+    userData.P2P_START = '';
+    userData.P2P_END = '';
+
     await sync.setUserInfoWithSocketId(redis, sessionId, userData);
   }
-
-  else if(roomData.MULTITYPE && roomData.MULTITYPE === 'Y'){
+  else if(roomData.MULTITYPE && roomData.MULTITYPE === 'Y' && userData.N2N_START){
     userData.N2N_END = commonFn.getDate();
+
+    await charging(sessionId, {
+      cpCode: data.cpCode,
+      userId: data.userId,
+      userName: userData.userName?userData.userName:'익명',
+      clientIp: socket.request.connection._peername.address,
+      roomId: data.roomId,
+      startDate: userData.N2N_START,
+      usageTime: commonFn.usageTime(userData.N2N_START, userData.N2N_END),
+      usageType: 'P2P'
+    })
+
+    //과금 반영 후 Sync Server 시간정보 초기화
+    userData.N2N_START = '';
+    userData.N2N_END = '';
+
     await sync.setUserInfoWithSocketId(redis, sessionId, userData);
   }
 
