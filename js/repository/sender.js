@@ -37,7 +37,13 @@ exports.coreConnector = {
   start: async (sessionId, type, url, body) => {
     // 190515 ivypark, Core REST 변경 건으로 인한 수정
     const base = await serverInfo.getCore();
-    logger.log('info', `[ ### SIGNAL > CORE ## ] ${JSON.stringify(body)}`);
+    if(url === 'license/licenseValidation'){
+      logger.log('info', `[ ### SIGNAL > CORE ## ] license check ${body.cpCode} / ${body.authKey}`);
+      body = {
+        cpCode : body.cpCode,
+        authKey : body.authKey
+      }
+    }
     return new Promise((resolve, reject) => {
 
       let time = setTimeout(async () => {
