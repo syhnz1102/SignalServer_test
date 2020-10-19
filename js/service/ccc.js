@@ -835,7 +835,6 @@ exports.changeName = async (data, sessionId, redis, socket) => {
   await sync.changeItemInRoom(redis, data.roomId, data.userId, 'NAME', data.name);
   let userData = await sync.getUserInfoBySocketId(redis, sessionId);
   userData.userName = data.name;
-
   await sync.setUserInfoWithSocketId(redis, sessionId, userData);
 
   signalSocket.broadcast(socket, data.roomId, {

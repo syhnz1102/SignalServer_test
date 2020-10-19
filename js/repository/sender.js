@@ -24,7 +24,7 @@ exports.signalSocket = {
     if (!roomId || !respData) {
       return;
     }
-
+    logger.log('info',`[ ### SIGNAL > WEB ### ] ${JSON.stringify(respData)}`)
     socket.broadcast.to(roomId).emit('knowledgetalk', respData);
   },
   room: (roomId, respData, reqData) => {
