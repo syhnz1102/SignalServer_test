@@ -856,7 +856,13 @@ exports.exitRoom = async (socket, redis, sessionId) => {
 
   if(roomInfo.MULTITYPE && roomInfo.MULTITYPE === 'N' && o.P2P_START){
 
-    o.P2P_END = await commonFn.getDate();
+    let start = o.P2P_START;
+    let end = await commonFn.getDate();
+
+    o.P2P_START = '';
+    o.P2P_END = '';
+    await sync.setUserInfoWithSocketId(redis, sessionId, o);
+
     await charging(sessionId, {
       cpCode: cp,
       userId: userId,
@@ -864,18 +870,26 @@ exports.exitRoom = async (socket, redis, sessionId) => {
       clientIp: socket.request.connection._peername.address,
       roomId: roomId,
       startDate: o.P2P_START,
-      usageTime: await commonFn.usageTime(o.P2P_START, o.P2P_END),
+      usageTime: await commonFn.usageTime(start, end),
       usageType: 'P2P'
     })
 
-    o.P2P_START = '';
-    o.P2P_END = '';
-    await sync.setUserInfoWithSocketId(redis, sessionId, o);
+
+
   }
 
   else if(roomInfo.MULTITYPE && roomInfo.MULTITYPE === 'Y' && o.N2N_START){
 
     if(o.P2P_START && o.P2P_END){
+
+      //과금 반영 후 Sync Server 시간정보 초기화
+      let start = o.P2P_START;
+      let end = await commonFn.getDate();
+
+      o.P2P_START = '';
+      o.P2P_END = '';
+      await sync.setUserInfoWithSocketId(redis, sessionId, o);
+
       await charging(sessionId, {
         cpCode: cp,
         userId: userId,
@@ -883,16 +897,18 @@ exports.exitRoom = async (socket, redis, sessionId) => {
         clientIp: socket.request.connection._peername.address,
         roomId: roomId,
         startDate: o.P2P_START,
-        usageTime: await commonFn.usageTime(o.P2P_START, o.P2P_END),
+        usageTime: await commonFn.usageTime(start, end),
         usageType: 'P2P'
       })
-
-      //과금 반영 후 Sync Server 시간정보 초기화
-      o.P2P_START = '';
-      o.P2P_END = '';
     }
 
-    o.N2N_END = await commonFn.getDate();
+    let start = o.N2N_START;
+    let end = await commonFn.getDate();
+
+    //과금 반영 후 Sync Server 시간정보 초기화
+    o.N2N_START = '';
+    o.N2N_END = '';
+    await sync.setUserInfoWithSocketId(redis, sessionId, o);
 
     await charging(sessionId, {
       cpCode: cp,
@@ -901,14 +917,9 @@ exports.exitRoom = async (socket, redis, sessionId) => {
       clientIp: socket.request.connection._peername.address,
       roomId: roomId,
       startDate: o.N2N_START,
-      usageTime: await commonFn.usageTime(o.N2N_START, o.N2N_END),
+      usageTime: await commonFn.usageTime(start, end),
       usageType: 'N2N'
     })
-
-    //과금 반영 후 Sync Server 시간정보 초기화
-    o.N2N_START = '';
-    o.N2N_END = '';
-    await sync.setUserInfoWithSocketId(redis, sessionId, o);
 
   }
 
