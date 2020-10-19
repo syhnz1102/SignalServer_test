@@ -869,7 +869,7 @@ exports.exitRoom = async (socket, redis, sessionId) => {
       userName: o.userName?o.userName:'익명',
       clientIp: socket.request.connection._peername.address,
       roomId: roomId,
-      startDate: o.P2P_START,
+      startDate: start,
       usageTime: await commonFn.usageTime(start, end),
       usageType: 'P2P'
     })
@@ -896,7 +896,7 @@ exports.exitRoom = async (socket, redis, sessionId) => {
         userName: o.userName?o.userName:'익명',
         clientIp: socket.request.connection._peername.address,
         roomId: roomId,
-        startDate: o.P2P_START,
+        startDate: start,
         usageTime: await commonFn.usageTime(start, end),
         usageType: 'P2P'
       })
@@ -916,7 +916,7 @@ exports.exitRoom = async (socket, redis, sessionId) => {
       userName: o.userName?o.userName:'익명',
       clientIp: socket.request.connection._peername.address,
       roomId: roomId,
-      startDate: o.N2N_START,
+      startDate: start,
       usageTime: await commonFn.usageTime(start, end),
       usageType: 'N2N'
     })
