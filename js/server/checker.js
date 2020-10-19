@@ -6,7 +6,7 @@ module.exports = (sessionId, data) => {
       resolve(true)
       return
     }
-    let result = await coreConnector.start(sessionId, 'post', 'ccc/check', data);
+    let result = await coreConnector.start(sessionId, 'post', 'license/licenseValidation', data);
     resolve(result.code === 200);
   })
 }
