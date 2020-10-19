@@ -1134,6 +1134,12 @@ exports.endCall = async (data, sessionId, redis, socket) => {
     code: '200',
     message: 'OK'
   })
+
+  signalSocket.broadcast(socket, data.roomId, {
+    signalOp:'Presence',
+    userId: data.userId,
+    action: 'endCall'
+  })
 }
 
 exports.kickOut = async (data, sessionId, redis, socket) => {
