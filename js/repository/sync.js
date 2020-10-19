@@ -249,7 +249,9 @@ exports.leaveRoom = (redis, roomId, sessionId) => {
       redis.hget("USER_INFO_BY_SOCKET_ID", sessionId, (e, obj) => {
         try {
           let o = JSON.parse(obj);
-          delete roomInfo.USERS[o.ID];
+          if(roomInfo.USERS){
+            delete roomInfo.USERS[o.ID];
+          }
           redis.hset("ROOMS_INFO", roomId, JSON.stringify(roomInfo));
           redis.hdel("USER_INFO_BY_USER_ID", o.ID);
           resolve();

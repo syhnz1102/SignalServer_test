@@ -1081,25 +1081,14 @@ exports.endCall = async (data, sessionId, redis, socket) => {
   if(roomData.MULTITYPE && roomData.MULTITYPE === 'N' && userData.P2P_START){
     userData.P2P_END = await commonFn.getDate();
 
-    await charging(sessionId, {
-      cpCode: data.cpCode,
-      userId: data.userId,
-      userName: userData.userName?userData.userName:'익명',
-      clientIp: socket.request.connection._peername.address,
-      roomId: data.roomId,
-      startDate: userData.P2P_START,
-      usageTime: await commonFn.usageTime(userData.P2P_START, userData.P2P_END),
-      usageType: 'P2P'
-    })
+    let start = userData.P2P_START;
+    let end = await commonFn.getDate();
 
     //과금 반영 후 Sync Server 시간정보 초기화
     userData.P2P_START = '';
     userData.P2P_END = '';
 
     await sync.setUserInfoWithSocketId(redis, sessionId, userData);
-  }
-  else if(roomData.MULTITYPE && roomData.MULTITYPE === 'Y' && userData.N2N_START){
-    userData.N2N_END = await commonFn.getDate();
 
     await charging(sessionId, {
       cpCode: data.cpCode,
@@ -1107,16 +1096,36 @@ exports.endCall = async (data, sessionId, redis, socket) => {
       userName: userData.userName?userData.userName:'익명',
       clientIp: socket.request.connection._peername.address,
       roomId: data.roomId,
-      startDate: userData.N2N_START,
-      usageTime: await commonFn.usageTime(userData.N2N_START, userData.N2N_END),
-      usageType: 'N2N'
+      startDate: start,
+      usageTime: await commonFn.usageTime(start, end),
+      usageType: 'P2P'
     })
+
+
+  }
+  else if(roomData.MULTITYPE && roomData.MULTITYPE === 'Y' && userData.N2N_START){
+
+    let start = userData.N2N_START;
+    let end = await commonFn.getDate();
 
     //과금 반영 후 Sync Server 시간정보 초기화
     userData.N2N_START = '';
     userData.N2N_END = '';
 
     await sync.setUserInfoWithSocketId(redis, sessionId, userData);
+
+    await charging(sessionId, {
+      cpCode: data.cpCode,
+      userId: data.userId,
+      userName: userData.userName?userData.userName:'익명',
+      clientIp: socket.request.connection._peername.address,
+      roomId: data.roomId,
+      startDate: start,
+      usageTime: await commonFn.usageTime(start, end),
+      usageType: 'N2N'
+    })
+
+
   }
 
   await transaction(sessionId, {
