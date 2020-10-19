@@ -373,8 +373,9 @@ exports.sdp = async (data, sessionId, redis, socket) => {
 
             userData.P2P_START = '';
             userData.P2P_END = '';
-            await sync.setUserInfoWithSocketId(redis, sessionId, userData);
           }
+          userData.N2N_START = commonFn.getDate();
+          await sync.setUserInfoWithSocketId(redis, sessionId, userData);
 
           //다자간 전환을 위해 Media Server VideoRoom Join
           let videoRoomData = await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: true, type: 'cam', host: false })
@@ -1096,7 +1097,7 @@ exports.endCall = async (data, sessionId, redis, socket) => {
       roomId: data.roomId,
       startDate: userData.N2N_START,
       usageTime: commonFn.usageTime(userData.N2N_START, userData.N2N_END),
-      usageType: 'P2P'
+      usageType: 'N2N'
     })
 
     //과금 반영 후 Sync Server 시간정보 초기화
