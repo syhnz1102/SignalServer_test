@@ -48,7 +48,7 @@ module.exports = (socket, signalSocketio, redisInfo) => {
         break;
 
       case 'DestroyRoom':
-        await cccService.destroyRoom(data, sessionId, redisInfo);
+        await cccService.destroyRoom(data, sessionId, redisInfo, socket);
         break;
 
       case 'RoomJoin':
@@ -74,15 +74,15 @@ module.exports = (socket, signalSocketio, redisInfo) => {
         break;
 
       case 'SendFeed':
-        await cccService.feedHandler(data, sessionId, redisInfo);
+        await cccService.feedHandler(data, sessionId, redisInfo, socket);
         break;
 
       case 'SessionReserve':
-        await cccService.sessionReserve(data, sessionId, redisInfo);
+        await cccService.sessionReserve(data, sessionId, redisInfo, socket);
         break;
 
       case 'SessionReserveEnd':
-        await cccService.endSessionReserve(data, sessionId, redisInfo);
+        await cccService.endSessionReserve(data, sessionId, redisInfo, socket);
         break;
 
       case 'ScreenShareConferenceEnd':

@@ -38,11 +38,13 @@ exports.coreConnector = {
     // 190515 ivypark, Core REST 변경 건으로 인한 수정
     const base = await serverInfo.getCore();
     if(url === 'license/licenseValidation'){
-      logger.log('info', `[ ### SIGNAL > CORE ## ] license check ${body.cpCode} / ${body.authKey}`);
+      logger.log('info', `[ ### SIGNAL > CORE ## ] license check ${body.cpCode}`);
       body = {
         cpCode : body.cpCode,
         authKey : body.authKey
       }
+    } else if(url === 'charge/setChargingData') {
+      logger.log('info', `[ ### SIGNAL > CORE ## ] charging check ${JSON.stringify(body)}`);
     }
     return new Promise((resolve, reject) => {
 
