@@ -29,7 +29,7 @@ module.exports = (socket, signalSocketio, redisInfo) => {
       data.sdp.sdp = "sdp info...";
       logger.log('info', `[ ### WEB > SIGNAL ### ] ${JSON.stringify(data)}`);
       data.sdp.sdp = sdpReqData;
-    } else {
+    } else if(data.eventOp !== 'KeepAlive'){
       logger.log('info', `[ ### WEB > SIGNAL ### ] ${JSON.stringify(data)}`);
     }
 
