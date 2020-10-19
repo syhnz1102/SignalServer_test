@@ -25,9 +25,9 @@ exports.signalSocket = {
       return;
     }
 
-    if(respData.sdp && respData.sdp.sdp){
-      respData.sdp.sdp = "SDP info..."
-    }
+    // if(respData.sdp && respData.sdp.sdp){
+    //   respData.sdp.sdp = "SDP info..."
+    // }
 
     logger.log('info',`[ ### SIGNAL > WEB ### ] ${JSON.stringify(respData)}`)
     socket.broadcast.to(roomId).emit('knowledgetalk', respData);
