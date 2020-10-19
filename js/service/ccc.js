@@ -296,7 +296,7 @@ exports.videoRoomJoin = async (data, sessionId, redis, socket, socketIo) => {
   }
 }
 
-eexports.sdp = async (data, sessionId, redis, socket) => {
+exports.sdp = async (data, sessionId, redis, socket) => {
   if (data.code === '200') return false;
   let roomInfo = await sync.getRoom(redis, data.roomId);
 
