@@ -411,7 +411,7 @@ exports.sdpVideoRoom = async (socketId, redisInfo, reqData) => {
         return;
       });
 
-      if(janusResData[socketId].janus === 'error'){
+      if(janusResData[socketId].janus && janusResData[socketId].janus === 'error'){
         delete janusResData[socketId];
         resolve({
           code: '570'
