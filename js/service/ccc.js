@@ -831,7 +831,7 @@ exports.setAudio = async (data, sessionId, redis, socket) => {
 }
 
 exports.changeName = async (data, sessionId, redis, socket) => {
-  await license.user.insert(sessionId, { cpCode: data.cpCode || config.license.code, name: data.name }, socket);
+  // await license.user.insert(sessionId, { cpCode: data.cpCode || config.license.code, name: data.name }, socket);
   await sync.changeItemInRoom(redis, data.roomId, data.userId, 'NAME', data.name);
   let userData = await sync.getUserInfoBySocketId(redis, sessionId);
   userData.userName = data.name;
