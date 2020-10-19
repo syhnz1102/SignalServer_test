@@ -30,6 +30,9 @@ let url_janus = {}
 //sessionId를 key 값으로 url 값을 저장하고 있는 객체
 let sessionId_url = {}
 
+//sessionId를 key 값으로 socket id 값을 저장하고 있는 객체
+let sessionId_sockets = {};
+
 //응답 message 저장하고 있는 객체
 let janusResData = {}
 
@@ -71,6 +74,7 @@ const createWebSocket = (url, socketId, resolve, reject) => {
             ws['janusSessionId'] = res.data.id;
             //sessionId를 key값으로 url 저장
             sessionId_url[res.data.id] = url;
+            sessionId_sockets[res.data.id] = socketId
 
             //keepalive message 재귀 함수 이용하여 계속 전송
             let keepAliveInterval = setInterval(()=>{
@@ -103,6 +107,7 @@ const createWebSocket = (url, socketId, resolve, reject) => {
         //websocket 정보 삭제
         if(url_janus[url]){
             delete sessionId_url[url_janus[url].janusSessionId];
+            delete sessionId_sockets[url_janus[url].janusSessionId];
             delete url_janus[url];
         }
 
@@ -216,7 +221,7 @@ const messageProcessor = async (message, socketId) => {
     }
 
     //publisher event 수신 시, subscriber로 입장
-    if(messageObj.janus == 'event' && messageObj.plugindata && messageObj.plugindata.data && messageObj.plugindata.data.publishers && messageObj.plugindata.data.publishers.length>0){
+    else if(messageObj.janus == 'event' && messageObj.plugindata && messageObj.plugindata.data && messageObj.plugindata.data.publishers && messageObj.plugindata.data.publishers.length>0){
         let publishers = messageObj.plugindata.data.publishers;
         let roomId = messageObj.plugindata.data.room;
 
@@ -240,7 +245,7 @@ const messageProcessor = async (message, socketId) => {
     }
 
     //화자감지
-    if(messageObj.janus == 'event' && messageObj.plugindata && messageObj.plugindata.data && messageObj.plugindata.data.videoroom && (messageObj.plugindata.data.videoroom == 'talking' || messageObj.plugindata.data.videoroom == 'stopped-talking')){
+    else if(messageObj.janus == 'event' && messageObj.plugindata && messageObj.plugindata.data && messageObj.plugindata.data.videoroom && (messageObj.plugindata.data.videoroom == 'talking' || messageObj.plugindata.data.videoroom == 'stopped-talking')){
         let roomId = messageObj.plugindata.data.room;
 
         //publisher로 join 했던 handle id 값으로 user 정보 가져오기
@@ -256,12 +261,25 @@ const messageProcessor = async (message, socketId) => {
         let data = {
             signalOp:"Presence",
             who: uidForCCC && uidForCCC.ID? uidForCCC.ID:syncData[messageObj.sender].socketId,
-            talking: messageObj.plugindata.data.videoroom == 'talking'? true:false,
+            talking: messageObj.plugindata.data.videoroom === 'talking'
         }
 
         //room에 화자 정보 전송
         sendToRoom(syncData[messageObj.sender].socketId, roomId, data);
 
+    }
+
+    //slowlink event
+    else if(messageObj.janus === 'slowlink'){
+
+        // //client에 보낼 message
+        // let data = {
+        //     signalOp: 'Presence',
+        //     action: 'slowlink'
+        // }
+        //
+        // //client에 sdpData 전송
+        // sendToClient(sessionId_sockets[messageObj.session_id], data);
     }
 
     //받은 message를 resolve로 return
@@ -492,6 +510,26 @@ exports.sendAnswerForSubscriber = (url, handleId, janusRoomId, sdp, socketId) =>
                 room : janusRoomId
             },
             jsep : sdp
+        }
+
+        sendMsg(sockets[socketId], order, msg, resolve, reject);
+
+    })
+}
+
+//subscriber 가 answer 보내는 method
+exports.configureForSubscriber = (url, handleId, janusRoomId, sdp, socketId, video, audio) => {
+    return new Promise((resolve, reject) => {
+        let order = 'message';
+        let msg = {
+            janus : order,
+            session_id : sockets[socketId].janusSessionId,
+            handle_id : handleId,
+            body : {
+                request : 'configure',
+                video : video,
+                audio : audio
+            }
         }
 
         sendMsg(sockets[socketId], order, msg, resolve, reject);

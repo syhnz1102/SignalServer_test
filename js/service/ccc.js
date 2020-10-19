@@ -615,44 +615,6 @@ exports.chat = async (data, sessionId, redis, socket) => {
   })
 }
 
-exports.startCall = async (data, sessionId, redis, socket) => {
-  transaction(sessionId, {
-    eventOp: 'StartCall',
-    roomId: data.roomId,
-    userId: data.userId,
-    cpCode: data.cpCode || config.license.code,
-    ip: socket.request.connection._peername.address
-  })
-
-  signalSocket.emit(socket.id,{
-    eventOp: 'StartCall',
-    code: '200',
-    message: 'OK'
-  })
-}
-
-exports.endCall = async (data, sessionId, redis, socket) => {
-  transaction(sessionId, {
-    eventOp: 'EndCall',
-    roomId: data.roomId,
-    userId: data.userId,
-    cpCode: data.cpCode || config.license.code,
-    ip: socket.request.connection._peername.address
-  })
-
-  signalSocket.emit(socket.id,{
-    eventOp: 'EndCall',
-    code: '200',
-    message: 'OK'
-  })
-
-  signalSocket.broadcast(socket, data.roomId, {
-    signalOp: 'Presence',
-    userId: data.userId,
-    action: 'endCall'
-  });
-}
-
 exports.kickOut = async (data, sessionId, redis, socket) => {
   if (!data.roomId || !data.userId) {
     signalSocket.emit(socket.id,{
@@ -690,4 +652,84 @@ exports.kickOut = async (data, sessionId, redis, socket) => {
       action: 'kick'
     });
   }
+}
+
+exports.startCall = async (data, sessionId, redis, socket) => {
+
+  await transaction(sessionId, {
+    opCode: 'StartCall',
+    roomId: data.roomId,
+    userId: data.userId,
+    cpCode: data.cpCode || config.license.code,
+    clientIp: socket.request.connection._peername.address,
+    resultCode: '200'
+  })
+
+  signalSocket.emit(socket.id,{
+    eventOp:'StartCall',
+    code: '200',
+    message: 'OK'
+  })
+}
+
+exports.endCall = async (data, sessionId, redis, socket) => {
+
+  let userData = await sync.getUserInfoBySocketId(redis, sessionId);
+  let roomData = await sync.getRoom(redis, data.roomId);
+
+  if(roomData.MULTITYPE && roomData.MULTITYPE === 'N' && userData.P2P_START){
+    userData.P2P_END = commonFn.getDate();
+
+    await charging(sessionId, {
+      cpCode: data.cpCode,
+      userId: data.userId,
+      userName: userData.userName?userData.userName:'익명',
+      clientIp: socket.request.connection._peername.address,
+      roomId: data.roomId,
+      startDate: userData.P2P_START,
+      usageTime: commonFn.usageTime(userData.P2P_START, userData.P2P_END),
+      usageType: 'P2P'
+    })
+
+    //과금 반영 후 Sync Server 시간정보 초기화
+    userData.P2P_START = '';
+    userData.P2P_END = '';
+
+    await sync.setUserInfoWithSocketId(redis, sessionId, userData);
+  }
+  else if(roomData.MULTITYPE && roomData.MULTITYPE === 'Y' && userData.N2N_START){
+    userData.N2N_END = commonFn.getDate();
+
+    await charging(sessionId, {
+      cpCode: data.cpCode,
+      userId: data.userId,
+      userName: userData.userName?userData.userName:'익명',
+      clientIp: socket.request.connection._peername.address,
+      roomId: data.roomId,
+      startDate: userData.N2N_START,
+      usageTime: commonFn.usageTime(userData.N2N_START, userData.N2N_END),
+      usageType: 'P2P'
+    })
+
+    //과금 반영 후 Sync Server 시간정보 초기화
+    userData.N2N_START = '';
+    userData.N2N_END = '';
+
+    await sync.setUserInfoWithSocketId(redis, sessionId, userData);
+  }
+
+  await transaction(sessionId, {
+    opCode: 'EndCall',
+    roomId: data.roomId,
+    userId: data.userId,
+    cpCode: data.cpCode || config.license.code,
+    clientIp: socket.request.connection._peername.address,
+    resultCode: '200'
+  })
+
+  signalSocket.emit(socket.id,{
+    eventOp:'EndCall',
+    code: '200',
+    message: 'OK'
+  })
 }

@@ -70,7 +70,7 @@ exports.getUserInfoByHandleId = (redis, handleId) => {
 			resolved(null);
 			return;
 		}
-		
+
 		redis.hget('USER_INFO_BY_HANDLE_ID', handleId, (error, obj) => {
 			if(error){
 				rejected(rejectCode);
@@ -102,7 +102,7 @@ exports.delUserInfoByHandleId = (redis, handleId) => {
 //User 정보 삭제
 exports.delUserInfo = (redis, socketId) => {
 	return new Promise((resolved, rejected) => {
-		
+
 		//socket id로 handle id 가져오기
 		redis.hget('USER_INFO_BY_SOCKET_ID', socketId, (error, obj)=>{
 			let roomInfos = setObject(obj).roomInfo;
@@ -113,7 +113,7 @@ exports.delUserInfo = (redis, socketId) => {
 							rejected(rejectCode);
 							return;
 						}
-		
+
 					})
 					if(roomInfos[data].screenHandleId){
 						redis.hdel('USER_INFO_BY_HANDLE_ID', roomInfos[data].screenHandleId, (err, obj) => {
@@ -121,7 +121,7 @@ exports.delUserInfo = (redis, socketId) => {
 								rejected(rejectCode);
 								return;
 							}
-			
+
 						})
 					}
 				})
