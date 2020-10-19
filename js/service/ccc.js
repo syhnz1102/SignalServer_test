@@ -891,6 +891,8 @@ exports.exitRoom = async (socket, redis, sessionId) => {
       o.P2P_END = '';
     }
 
+    o.N2N_END = await commonFn.getDate();
+
     await charging(sessionId, {
       cpCode: cp,
       userId: userId,
