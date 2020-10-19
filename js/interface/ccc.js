@@ -27,10 +27,10 @@ module.exports = (socket, signalSocketio, redisInfo) => {
     if(data.eventOp === 'SDP' && data.sdp && data.sdp.sdp) {
       let sdpReqData = data.sdp.sdp;
       data.sdp.sdp = "sdp info...";
-      logger.log('info', `[ ### WEB > SIGNAL ### ] : ${JSON.stringify(data)}`);
+      logger.log('info', `[ ### WEB > SIGNAL ### ] ${JSON.stringify(data)}`);
       data.sdp.sdp = sdpReqData;
     } else {
-      logger.log('info', `[ ### WEB > SIGNAL ### ] : ${JSON.stringify(data)}`);
+      logger.log('info', `[ ### WEB > SIGNAL ### ] ${JSON.stringify(data)}`);
     }
 
     const isChecked = await checker(sessionId, data);
