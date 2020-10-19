@@ -24,10 +24,20 @@ exports.signalSocket = {
     if (!roomId || !respData) {
       return;
     }
+
+    if(respData.sdp && respData.sdp.sdp){
+      respData.sdp.sdp = "SDP info..."
+    }
+
     logger.log('info',`[ ### SIGNAL > WEB ### ] ${JSON.stringify(respData)}`)
     socket.broadcast.to(roomId).emit('knowledgetalk', respData);
   },
   room: (roomId, respData, reqData) => {
+
+    if(respData.sdp && respData.sdp.sdp){
+      respData.sdp.sdp = "SDP info..."
+    }
+
     logger.log('info', `[ ### SIGNAL > WEB ### ] ${JSON.stringify(respData)}`);
     serverInfo.signal.to(roomId).emit('knowledgetalk', respData);
   }

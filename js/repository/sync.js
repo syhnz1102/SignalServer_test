@@ -149,7 +149,6 @@ exports.isScreenSharePossible = function (redis, roomId, userId, callback) {
     }
 
     let result = JSON.parse(obj);
-    console.log(result);
     try {
       if (result.SCREEN.USERID && result.SCREEN.USERID === userId) {
         callback(true);
