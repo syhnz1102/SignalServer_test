@@ -19,17 +19,19 @@ exports.reqNo = function() {
 
 //서버시간을 리턴.
 exports.getDate = () => {
-    let today = new Date();
-    const dd = String(today.getDate()).padStart(2, '0');
-    const mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
-    const yyyy = today.getFullYear();
-    const hh = today.getHours()<10 ? ("0"+today.getHours()) : today.getHours();
-    const min = today.getMinutes()<10 ? ("0"+today.getMinutes()) : today.getMinutes();
-    const ss = today.getSeconds()<10 ? ("0"+today.getSeconds()) : today.getSeconds();
+    return new Promise(((resolve, reject) => {
+        let today = new Date();
+        const dd = String(today.getDate()).padStart(2, '0');
+        const mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+        const yyyy = today.getFullYear();
+        const hh = today.getHours()<10 ? ("0"+today.getHours()) : today.getHours();
+        const min = today.getMinutes()<10 ? ("0"+today.getMinutes()) : today.getMinutes();
+        const ss = today.getSeconds()<10 ? ("0"+today.getSeconds()) : today.getSeconds();
 
-    today = yyyy + mm + dd + hh + min + ss;
+        today = yyyy + mm + dd + hh + min + ss;
 
-    return today;
+        resolve(today)
+    }))
 };
 
 exports.stringToDate = date => {
@@ -46,10 +48,12 @@ exports.stringToDate = date => {
 }
 
 exports.usageTime = (start, end) => {
-    let startDate = start?this.stringToDate(start):0;
-    let endDate = end?this.stringToDate(end):0;
+    return new Promise((resolve => {
+        let startDate = start?this.stringToDate(start):0;
+        let endDate = end?this.stringToDate(end):0;
 
-    return (endDate - startDate)/1000;
+        resolve((endDate - startDate)/1000);
+    }))
 }
 
 //현재시간에 random 문자열 추가 하여 room id 생성

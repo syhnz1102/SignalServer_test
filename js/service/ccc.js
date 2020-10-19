@@ -319,13 +319,13 @@ exports.sdp = async (data, sessionId, redis, socket) => {
           clientIp: socket.request.connection._peername.address,
           roomId: data.roomId,
           startDate: userData.P2P_START,
-          usageTime: commonFn.usageTime(userData.P2P_START, commonFn.getDate()),
+          usageTime: await commonFn.usageTime(userData.P2P_START, await commonFn.getDate()),
           usageType: 'P2P'
         })
 
       }
 
-      userData.P2P_START = commonFn.getDate()
+      userData.P2P_START = await commonFn.getDate()
       await sync.setUserInfoWithSocketId(redis, sessionId, userData);
     }
 
@@ -358,7 +358,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
 
           //P2P 종료로 인해 과금 반영
           if(userData.P2P_START){
-            userData.P2P_END = commonFn.getDate();
+            userData.P2P_END = await commonFn.getDate();
 
             await charging(sessionId, {
               cpCode: data.cpCode,
@@ -367,7 +367,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
               clientIp: socket.request.connection._peername.address,
               roomId: data.roomId,
               startDate: userData.P2P_START,
-              usageTime: commonFn.usageTime(userData.P2P_START, userData.P2P_END),
+              usageTime: await commonFn.usageTime(userData.P2P_START, userData.P2P_END),
               usageType: 'P2P'
             })
 
@@ -451,8 +451,8 @@ exports.sdp = async (data, sessionId, redis, socket) => {
           })
 
           let userData = await sync.getUserInfoBySocketId(redis, sessionId);
-          userData.P2P_END = commonFn.getDate()
-          userData.N2N_START = commonFn.getDate()
+          userData.P2P_END = await commonFn.getDate()
+          userData.N2N_START = await commonFn.getDate()
           await sync.setUserInfoWithSocketId(redis, sessionId, userData);
 
         } else {
@@ -863,7 +863,7 @@ exports.exitRoom = async (socket, redis, sessionId) => {
       clientIp: socket.request.connection._peername.address,
       roomId: roomId,
       startDate: o.P2P_START,
-      usageTime: commonFn.usageTime(o.P2P_START, o.P2P_END),
+      usageTime: await commonFn.usageTime(o.P2P_START, o.P2P_END),
       usageType: 'P2P'
     })
 
@@ -882,7 +882,7 @@ exports.exitRoom = async (socket, redis, sessionId) => {
         clientIp: socket.request.connection._peername.address,
         roomId: roomId,
         startDate: o.P2P_START,
-        usageTime: commonFn.usageTime(o.P2P_START, o.P2P_END),
+        usageTime: await commonFn.usageTime(o.P2P_START, o.P2P_END),
         usageType: 'P2P'
       })
 
@@ -898,7 +898,7 @@ exports.exitRoom = async (socket, redis, sessionId) => {
       clientIp: socket.request.connection._peername.address,
       roomId: roomId,
       startDate: o.N2N_START,
-      usageTime: commonFn.usageTime(o.N2N_START, o.N2N_END),
+      usageTime: await commonFn.usageTime(o.N2N_START, o.N2N_END),
       usageType: 'N2N'
     })
 
@@ -939,7 +939,7 @@ exports.disconnect = async (socket, redis, sessionId, socketIo) => {
   let roomInfo = await sync.getRoom(redis, roomId);
 
   if(roomInfo.MULTITYPE && roomInfo.MULTITYPE === 'N' && o.P2P_START){
-    o.P2P_END = commonFn.getDate()
+    o.P2P_END = await commonFn.getDate()
     await charging(sessionId, {
       cpCode: cp,
       userId: userId,
@@ -947,7 +947,7 @@ exports.disconnect = async (socket, redis, sessionId, socketIo) => {
       clientIp: socket.request.connection._peername.address,
       roomId: roomId,
       startDate: o.P2P_START,
-      usageTime: commonFn.usageTime(o.P2P_START, o.P2P_END),
+      usageTime: await commonFn.usageTime(o.P2P_START, o.P2P_END),
       usageType: 'P2P'
     })
 
@@ -969,7 +969,7 @@ exports.disconnect = async (socket, redis, sessionId, socketIo) => {
         clientIp: socket.request.connection._peername.address,
         roomId: roomId,
         startDate: o.P2P_START,
-        usageTime: commonFn.usageTime(o.P2P_START, o.P2P_END),
+        usageTime: await commonFn.usageTime(o.P2P_START, o.P2P_END),
         usageType: 'P2P'
       })
 
@@ -978,7 +978,7 @@ exports.disconnect = async (socket, redis, sessionId, socketIo) => {
       o.P2P_END = '';
     }
 
-    o.N2N_END = commonFn.getDate();
+    o.N2N_END = await commonFn.getDate();
     await charging(sessionId, {
       cpCode: cp,
       userId: userId,
@@ -986,7 +986,7 @@ exports.disconnect = async (socket, redis, sessionId, socketIo) => {
       clientIp: socket.request.connection._peername.address,
       roomId: roomId,
       startDate: o.N2N_START,
-      usageTime: commonFn.usageTime(o.N2N_START, o.N2N_END),
+      usageTime: await commonFn.usageTime(o.N2N_START, o.N2N_END),
       usageType: 'N2N'
     })
 
@@ -1066,7 +1066,7 @@ exports.endCall = async (data, sessionId, redis, socket) => {
   let roomData = await sync.getRoom(redis, data.roomId);
 
   if(roomData.MULTITYPE && roomData.MULTITYPE === 'N' && userData.P2P_START){
-    userData.P2P_END = commonFn.getDate();
+    userData.P2P_END = await commonFn.getDate();
 
     await charging(sessionId, {
       cpCode: data.cpCode,
@@ -1075,7 +1075,7 @@ exports.endCall = async (data, sessionId, redis, socket) => {
       clientIp: socket.request.connection._peername.address,
       roomId: data.roomId,
       startDate: userData.P2P_START,
-      usageTime: commonFn.usageTime(userData.P2P_START, userData.P2P_END),
+      usageTime: await commonFn.usageTime(userData.P2P_START, userData.P2P_END),
       usageType: 'P2P'
     })
 
@@ -1086,7 +1086,7 @@ exports.endCall = async (data, sessionId, redis, socket) => {
     await sync.setUserInfoWithSocketId(redis, sessionId, userData);
   }
   else if(roomData.MULTITYPE && roomData.MULTITYPE === 'Y' && userData.N2N_START){
-    userData.N2N_END = commonFn.getDate();
+    userData.N2N_END = await commonFn.getDate();
 
     await charging(sessionId, {
       cpCode: data.cpCode,
@@ -1095,7 +1095,7 @@ exports.endCall = async (data, sessionId, redis, socket) => {
       clientIp: socket.request.connection._peername.address,
       roomId: data.roomId,
       startDate: userData.N2N_START,
-      usageTime: commonFn.usageTime(userData.N2N_START, userData.N2N_END),
+      usageTime: await commonFn.usageTime(userData.N2N_START, userData.N2N_END),
       usageType: 'N2N'
     })
 
