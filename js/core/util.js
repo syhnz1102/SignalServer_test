@@ -12,7 +12,7 @@ exports.reqNo = function() {
         for (let i = 0; i < 7; i++) {
             reqNo += randomRange(0, 9).toString();
         }
-    
+
         resolved(reqNo);
     });
 }
@@ -31,6 +31,26 @@ exports.getDate = () => {
 
     return today;
 };
+
+exports.stringToDate = date => {
+    let data = new Date();
+
+    data.setFullYear(parseInt(date.substr(0,4)));
+    data.setMonth(parseInt(date.substr(4,2))-1);
+    data.setDate(parseInt(date.substr(6,2)));
+    data.setHours(parseInt(date.substr(8,2)));
+    data.setMinutes(parseInt(date.substr(10,2)));
+    data.setSeconds(parseInt(date.substr(12,2)));
+
+    return data;
+}
+
+exports.usageTime = (start, end) => {
+    let startDate = start?this.stringToDate(start):0;
+    let endDate = end?this.stringToDate(end):0;
+
+    return (endDate - startDate)/1000;
+}
 
 //현재시간에 random 문자열 추가 하여 room id 생성
 exports.getRoomId = function(){
@@ -68,3 +88,4 @@ exports.getLightestMediaServer = (mediaServerUrls, redisInfo) => {
         resolve(selectedUrl)
     })
 }
+
