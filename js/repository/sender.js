@@ -11,9 +11,9 @@ exports.signalSocket = {
 
     serverInfo.signal.to(sessionId).emit('knowledgetalk', respData);
 
-    if(respData.sdp && respData.sdp.sdp){
-      respData.sdp.sdp = "SDP info..."
-    }
+    // if(respData.sdp && respData.sdp.sdp){
+    //   respData.sdp.sdp = "SDP info..."
+    // }
 
     if(respData.eventOp !== 'KeepAlive'){
       logger.log('info', `[ ### SIGNAL > WEB ### ] ${JSON.stringify(respData)}`);
