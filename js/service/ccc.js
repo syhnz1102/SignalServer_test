@@ -586,6 +586,32 @@ exports.sdp = async (data, sessionId, redis, socket) => {
   }
 }
 
+exports.feedHandler = async (data, sessionId, redis, socket) => {
+  // subscribe
+  const result = await core.receiveFeed(sessionId, data);
+  let displayId = result.display.indexOf('_screen') > -1 ? result.display : (await sync.getUserInfoBySocketId(redis, result.display)).ID;
+
+  signalSocket.emit(sessionId, {
+    eventOp: 'SDP',
+    usage: result.type,
+    userId: data.userId,
+    sdp: result.sdp,
+    pluginId: result.pluginId,
+    displayId: displayId,
+    roomId: data.roomId,
+    useMediaSvr: 'Y'
+  }, data);
+
+  await transaction(sessionId, {
+    opCode: `SDP(offer/${result.type})`,
+    roomId: data.roomId,
+    cpCode: data.cpCode || config.license.code,
+    clientIp: socket.request.connection._peername.address,
+    userId: data.userId,
+    resultCode: '200'
+  })
+}
+
 exports.candidate = async () => {
 }
 
