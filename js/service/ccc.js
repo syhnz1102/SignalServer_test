@@ -603,7 +603,7 @@ exports.feedHandler = async (data, sessionId, redis, socket) => {
   }, data);
 
   await transaction(sessionId, {
-    opCode: `SDP(offer/${result.type})`,
+    opCode: `SDP(offer_${result.type})`,
     roomId: data.roomId,
     cpCode: data.cpCode || config.license.code,
     clientIp: socket.request.connection._peername.address,
