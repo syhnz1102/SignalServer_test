@@ -856,6 +856,7 @@ exports.exitRoom = async (socket, redis, sessionId) => {
 
   if(roomInfo.MULTITYPE && roomInfo.MULTITYPE === 'N' && o.P2P_START){
 
+    o.P2P_END = await commonFn.getDate();
     await charging(sessionId, {
       cpCode: cp,
       userId: userId,
