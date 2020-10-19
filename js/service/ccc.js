@@ -296,7 +296,7 @@ exports.videoRoomJoin = async (data, sessionId, redis, socket, socketIo) => {
   }
 }
 
-exports.sdp = async (data, sessionId, redis, socket) => {
+eexports.sdp = async (data, sessionId, redis, socket) => {
   if (data.code === '200') return false;
   let roomInfo = await sync.getRoom(redis, data.roomId);
 
@@ -373,9 +373,8 @@ exports.sdp = async (data, sessionId, redis, socket) => {
 
             userData.P2P_START = '';
             userData.P2P_END = '';
+            await sync.setUserInfoWithSocketId(redis, sessionId, userData);
           }
-          userData.N2N_START = commonFn.getDate();
-          await sync.setUserInfoWithSocketId(redis, sessionId, userData);
 
           //다자간 전환을 위해 Media Server VideoRoom Join
           let videoRoomData = await core.joinVideoRoom(sessionId, redis, { roomId: data.roomId, subscribe: true, type: 'cam', host: false })
@@ -585,32 +584,6 @@ exports.sdp = async (data, sessionId, redis, socket) => {
       console.log("SDP ERROR OCCURRED.", err);
     }
   }
-}
-
-exports.feedHandler = async (data, sessionId, redis, socket) => {
-  // subscribe
-  const result = await core.receiveFeed(sessionId, data);
-  let displayId = result.display.indexOf('_screen') > -1 ? result.display : (await sync.getUserInfoBySocketId(redis, result.display)).ID;
-
-  signalSocket.emit(sessionId, {
-    eventOp: 'SDP',
-    usage: result.type,
-    userId: data.userId,
-    sdp: result.sdp,
-    pluginId: result.pluginId,
-    displayId: displayId,
-    roomId: data.roomId,
-    useMediaSvr: 'Y'
-  }, data);
-
-  await transaction(sessionId, {
-    opCode: `SDP(offer/${result.type})`,
-    roomId: data.roomId,
-    cpCode: data.cpCode || config.license.code,
-    clientIp: socket.request.connection._peername.address,
-    userId: data.userId,
-    resultCode: '200'
-  })
 }
 
 exports.candidate = async () => {
