@@ -266,7 +266,7 @@ const messageProcessor = async (message, socketId) => {
         }
 
         //room에 화자 정보 전송
-        sendToRoom(syncData[messageObj.sender].socketId, roomId, data);
+        // sendToRoom(syncData[messageObj.sender].socketId, roomId, data);
 
     }
 
