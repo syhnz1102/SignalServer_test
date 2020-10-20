@@ -52,6 +52,10 @@ module.exports = (socket, signalSocketio, redisInfo) => {
         await cccService.createRoom(data, sessionId, redisInfo, socket);
         break;
 
+      case 'CreateRoomWithRoomId':
+        await cccService.createRoomWithRoomId(data, sessionId, redisInfo, socket);
+        break;
+
       case 'DestroyRoom':
         await cccService.destroyRoom(data, sessionId, redisInfo, socket);
         break;

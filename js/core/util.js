@@ -93,3 +93,16 @@ exports.getLightestMediaServer = (mediaServerUrls, redisInfo) => {
     })
 }
 
+//roomId 유효성 검사
+exports.roomIdValidation = (roomId = 0) => {
+    return new Promise(resolve => {
+
+        roomId = parseInt(roomId);
+        let length = Math.floor(Math.log10(roomId)) + 1;
+        if(length !== 8){
+            resolve('422');
+        } else {
+            resolve('200');
+        }
+    })
+}

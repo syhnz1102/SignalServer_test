@@ -39,6 +39,12 @@ exports.roomCreate = async (redisInfo, reqData) => {
     //요청한 roomId로 room 생성
     else {
 
+      let roomIdValidation = await commonFn.roomIdValidation(reqData.roomId);
+      if(roomIdValidation !== '200'){
+        resolve({code: roomIdValidation})
+        return;
+      }
+
       roomData = await syncFn.getRoomDetail(redisInfo, reqData.roomId).catch(err => {
         logger.error(`[ ## SYNC > SIGNAL ### ] getRoomDetail Error ${err}`);
       })
@@ -55,6 +61,9 @@ exports.roomCreate = async (redisInfo, reqData) => {
       }
 
     }
+
+    //수용인원 정보 추가
+    roomData.capacity = reqData.capacity;
 
     await syncFn.setRoom(redisInfo, roomData.roomId, roomData).catch(err => {
       logger.error(`[ ## SYNC > SIGNAL ### ] setRoom Error ${err}`);
@@ -101,8 +110,23 @@ exports.roomJoin = async (socketIo, socket, redisInfo, reqData) => {
       return;
     }
 
+    //현재 socket room 인원
+    let userCount = 0;
+    if(socketIo.adapter.rooms[roomData.roomId]){
+      userCount = socketIo.adapter.rooms[roomData.roomId].length
+    }
+
+    //room 수용인원을 초과할 경우
+    if(roomData.capacity <= userCount){
+      resolve({
+        code: '444'
+      })
+      return;
+    }
+
     //socket join
     socket.join(roomData.roomId);
+    userCount = socketIo.adapter.rooms[roomData.roomId].length
 
     //user 정보에 방 정보 추가
     userData.roomInfo = {};
@@ -112,15 +136,10 @@ exports.roomJoin = async (socketIo, socket, redisInfo, reqData) => {
       logger.error(`[ ## SYNC > SIGNAL ### ] setUserInfoBySocketId Error ${err}`);
     });
 
-    //현재 socket room 인원
-    let userCount = 0;
-    if(socketIo.adapter.rooms[roomData.roomId]){
-      userCount = socketIo.adapter.rooms[roomData.roomId].length
-    }
 
     //응답 메시지에 인원수 추가
     roomJoinMsg.count = userCount;
-
+    roomJoinMsg.code = '200';
     //data return
     resolve(roomJoinMsg);
   })
@@ -390,17 +409,18 @@ exports.sdpVideoRoom = async (socketId, redisInfo, reqData) => {
         return;
       });
 
-      if(janusResData[socketId].janus === 'error'){
+      if(janusResData[socketId] && janusResData[socketId].janus === 'error'){
         delete janusResData[socketId];
         resolve({
           code: '570'
         });
-        return;
       }
 
-      sendData.sdp = janusResData[socketId].jsep;
+      else if(janusResData[socketId] && janusResData[socketId].jsep){
+        sendData.sdp = janusResData[socketId].jsep;
+        resolve(sendData);
+      }
 
-      resolve(sendData);
     } else if (reqData.sdp.type == 'answer' || reqData.sdp.type == 'ANSWER') {
       janusResData[socketId] = await fn_janus.sendAnswerForSubscriber(roomData.mediaServerUrl, reqData.pluginId, roomData.roomId, reqData.sdp, socketId).catch(err => {
         logger.error(`[ ## JANUS > SIGNAL ## ] sendAnswerForSubscriber : ${err}`);
