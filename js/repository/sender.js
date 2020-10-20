@@ -11,10 +11,10 @@ exports.signalSocket = {
 
     serverInfo.signal.to(sessionId).emit('knowledgetalk', respData);
 
-    // if(respData.sdp && respData.sdp.sdp){
-    //   respData.sdp.sdp = "SDP info..."
-    // }
 
+    if(respData.sdp && respData.sdp.sdp){
+      respData.sdp.sdp = "SDP info..."
+    }
     if(respData.eventOp !== 'KeepAlive'){
       logger.log('info', `[ ### SIGNAL > WEB ### ] ${JSON.stringify(respData)}`);
     }
@@ -25,21 +25,21 @@ exports.signalSocket = {
       return;
     }
 
-    // if(respData.sdp && respData.sdp.sdp){
-    //   respData.sdp.sdp = "SDP info..."
-    // }
-
-    logger.log('info',`[ ### SIGNAL > WEB ### ] ${JSON.stringify(respData)}`)
     socket.broadcast.to(roomId).emit('knowledgetalk', respData);
-  },
-  room: (roomId, respData, reqData) => {
 
     if(respData.sdp && respData.sdp.sdp){
       respData.sdp.sdp = "SDP info..."
     }
+    logger.log('info',`[ ### SIGNAL > WEB ### ] ${JSON.stringify(respData)}`)
+  },
+  room: (roomId, respData, reqData) => {
 
-    logger.log('info', `[ ### SIGNAL > WEB ### ] ${JSON.stringify(respData)}`);
     serverInfo.signal.to(roomId).emit('knowledgetalk', respData);
+
+    if(respData.sdp && respData.sdp.sdp){
+      respData.sdp.sdp = "SDP info..."
+    }
+    logger.log('info', `[ ### SIGNAL > WEB ### ] ${JSON.stringify(respData)}`);
   }
 };
 
