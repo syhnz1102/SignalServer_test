@@ -660,7 +660,7 @@ exports.disconnect = async (socket, redisInfo, socketIo) => {
           });
 
         }
-
+        console.log("dongwook ::: ", socketIo.adapter.rooms[roomId]);
         //아무도 없으면 방 삭제
         if(!socketIo.adapter.rooms[roomId] || (socketIo.adapter.rooms[roomId].length === 0)){
           logger.info(`[ ## SIGNAL > SYNC ### ] delete room : ${roomId}`);
