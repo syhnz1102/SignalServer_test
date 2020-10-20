@@ -922,13 +922,14 @@ exports.exitRoom = async (socket, redis, sessionId) => {
 
   }
 
+  roomInfo = await sync.leaveRoom(redis, roomId, sessionId);
   await transaction(sessionId, {
     opCode: 'ExitRoom',
     roomId: roomId,
     userId: userId,
     cpCode: cp || config.license.code,
     clientIp: socket.request.connection._peername.address,
-    count: Object.keys(roomInfo.USERS).length,
+    userCount: Object.keys(roomInfo.USERS).length,
     resultCode: '200'
   })
 
@@ -1020,13 +1021,14 @@ exports.disconnect = async (socket, redis, sessionId, socketIo) => {
     });
   }
 
+  roomInfo = await sync.leaveRoom(redis, roomId, sessionId);
   await transaction(sessionId, {
     opCode: 'Disconnect',
     roomId: roomId,
     userId: userId,
     cpCode: cp || config.license.code,
     clientIp: socket.request.connection._peername.address,
-    count: Object.keys(roomInfo.USERS).length,
+    userCount: Object.keys(roomInfo.USERS).length,
     resultCode: '200'
   })
 
@@ -1036,7 +1038,7 @@ exports.disconnect = async (socket, redis, sessionId, socketIo) => {
     action: 'exit'
   });
 
-  await sync.leaveRoom(redis, roomId, sessionId);
+
   await core.disconnect(socket, redis, socketIo);
 }
 
