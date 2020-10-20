@@ -39,6 +39,11 @@ module.exports = (socket, signalSocketio, redisInfo) => {
         code: '413',
         message: await common.codeToMsg(413)
       });
+
+      if(data.eventOp === 'KeepAlive'){
+        socket.disconnect(true)
+        logger.log('info', `[Socket : KeepAlive] Invalid license, Session Id is : ${socket.id}`);
+      }
       return false;
     }
 
