@@ -315,7 +315,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
         await charging(sessionId, {
           cpCode: data.cpCode,
           userId: data.userId,
-          userName: userData.userName?userData.userName:'익명',
+          userName: userData.userName?userData.userName:'name',
           clientIp: socket.request.connection._peername.address,
           roomId: data.roomId,
           startDate: userData.P2P_START,
@@ -865,7 +865,7 @@ exports.exitRoom = async (socket, redis, sessionId) => {
     await charging(sessionId, {
       cpCode: cp,
       userId: userId,
-      userName: o.userName?o.userName:'익명',
+      userName: o.userName?o.userName:'name',
       clientIp: socket.request.connection._peername.address,
       roomId: roomId,
       startDate: start,
