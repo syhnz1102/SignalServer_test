@@ -1,6 +1,11 @@
 ## KnowledgeTalk 4.0 
 ### Signal Server Release Note
 
+#### v4.0.5 (20/10/20)
+ - CORE Server 변경
+ - 통화시간 측정하여 과금
+ - Transaction / Charging API 추가
+
 #### v4.0.4 (20/10/12)
  - Chat Op 추가 (채팅)
  - StartCall / EndCall Op 추가 (통화 연결 확인, 통화 끊기)
