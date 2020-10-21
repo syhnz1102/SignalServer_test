@@ -371,7 +371,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
         await charging(sessionId, {
           cpCode: data.cpCode,
           userId: data.userId,
-          userName: userData.userName?userData.userName:'익명',
+          userName: userData.userName?userData.userName:'name',
           clientIp: socket.request.connection._peername.address,
           roomId: data.roomId,
           startDate: userData.P2P_START,
@@ -908,7 +908,6 @@ exports.exitRoom = async (socket, redis, sessionId) => {
   let userId = o.ID;
   let cp = o.CP;
   let roomInfo = await sync.getRoom(redis, roomId);
-
   if(roomInfo.MULTITYPE && roomInfo.MULTITYPE === 'N' && o.P2P_START){
 
     let start = o.P2P_START;
@@ -921,7 +920,7 @@ exports.exitRoom = async (socket, redis, sessionId) => {
     await charging(sessionId, {
       cpCode: cp,
       userId: userId,
-      userName: o.userName?o.userName:'익명',
+      userName: o.userName?o.userName:'name',
       clientIp: socket.request.connection._peername.address,
       roomId: roomId,
       startDate: start,
@@ -1007,7 +1006,6 @@ exports.disconnect = async (socket, redis, sessionId, socketIo) => {
   let userId = o.ID;
   let cp = o.CP;
   let roomInfo = await sync.getRoom(redis, roomId);
-
   if(roomInfo.MULTITYPE && roomInfo.MULTITYPE === 'N' && o.P2P_START){
     o.P2P_END = await commonFn.getDate()
     await charging(sessionId, {
