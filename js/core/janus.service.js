@@ -249,13 +249,16 @@ const messageProcessor = async (message, socketId) => {
         let roomId = messageObj.plugindata.data.room;
 
         //publisher로 join 했던 handle id 값으로 user 정보 가져오기
-        syncData[messageObj.sender] = await syncFn.getUserInfoByHandleId(redisInfo, messageObj.sender).catch(err => {
-            logger.error(`[ ## SYNC > SIGNAL ### ] getUserInfoByHandleId error : ${err}`);
-        });
+        // syncData[messageObj.sender] = await syncFn.getUserInfoByHandleId(redisInfo, messageObj.sender).catch(err => {
+        //     logger.error(`[ ## SYNC > SIGNAL ### ] getUserInfoByHandleId error : ${err}`);
+        // });
 
-        let uidForCCC = await syncFn.getUserInfoBySocketId(redisInfo, syncData[messageObj.sender].socketId).catch(err => {
-            logger.error(`[ ## SYNC > SIGNAL ### ] getUserInfoBySocketId error : ${err}`);
-        });
+        // let uidForCCC = await syncFn.getUserInfoBySocketId(redisInfo, syncData[messageObj.sender].socketId).catch(err => {
+        //     logger.error(`[ ## SYNC > SIGNAL ### ] getUserInfoBySocketId error : ${err}`);
+        // });
+
+        let uid = messageObj.plugindata.data.id;
+        console.log('@@@' + uid);
 
         //client에 보낼 message
         let data = {
