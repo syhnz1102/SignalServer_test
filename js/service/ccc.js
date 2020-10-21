@@ -852,7 +852,6 @@ exports.exitRoom = async (socket, redis, sessionId) => {
   let userId = o.ID;
   let cp = o.CP;
   let roomInfo = await sync.getRoom(redis, roomId);
-  console.log("dongwook", roomInfo);
   if(roomInfo.MULTITYPE && roomInfo.MULTITYPE === 'N' && o.P2P_START){
 
     let start = o.P2P_START;
@@ -951,7 +950,6 @@ exports.disconnect = async (socket, redis, sessionId, socketIo) => {
   let userId = o.ID;
   let cp = o.CP;
   let roomInfo = await sync.getRoom(redis, roomId);
-  console.log("dongwook", roomInfo);
   if(roomInfo.MULTITYPE && roomInfo.MULTITYPE === 'N' && o.P2P_START){
     o.P2P_END = await commonFn.getDate()
     await charging(sessionId, {

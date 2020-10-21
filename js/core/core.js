@@ -113,10 +113,16 @@ exports.roomJoin = async (socketIo, socket, redisInfo, reqData) => {
     });
 
     //현재 socket room 인원
-    let userCount = 0;
-    if(socketIo.adapter.rooms[roomData.roomId]){
-      userCount = socketIo.adapter.rooms[roomData.roomId].length
-    }
+    await syncFn.enterRoom(redisInfo, roomData.roomId, socketId).catch(err => {
+      logger.error(`[ ## SYNC > SIGNAL ### ] enterRoom Error ${err}`);
+    })
+
+    let userCount = await syncFn.getUserCount(redisInfo, roomData.roomId).catch(err => {
+      logger.error(`[ ## SYNC > SIGNAL ### ] getUserCount Error ${err}`);
+    })
+
+    console.log(`check(join) : ${userCount}`);
+
 
     //응답 메시지에 인원수 추가
     roomJoinMsg.count = userCount;
@@ -169,18 +175,22 @@ exports.exitRoom = async (socketIo, socket, redisInfo, reqData) => {
 
     socket.leave(reqData.roomId);
 
-    //인원 수 체크 해서 sync server에서 room 정보 지우기
-    let userCount = 0;
-    if(socketIo.adapter.rooms[reqData.roomId]){
-      userCount = socketIo.adapter.rooms[reqData.roomId].length;
+    //sync server에 퇴장 반영
+    await syncFn.exitRoom(redisInfo, roomId, socketId).catch(err => {
+      logger.error(`[ ## SYNC > SIGNAL ### ] exitRoom Error ${err}`);
+    })
 
-      //아무도 없으면 방 삭제
-      if(userCount == 0){
-        logger.info(`[ ## SIGNAL > SYNC ### ] delete room : ${reqData.roomId}`);
-        await syncFn.delRoom(redisInfo, roomData.roomId).catch(err => {
-          logger.error(`[ ## SYNC > SIGNAL ### ] delRoom Error ${err}`);
-        });
-      }
+    //인원 수 체크 해서 sync server에서 room 정보 지우기
+    let userCount = await syncFn.getUserCount(redisInfo, reqData.roomId).catch(err => {
+      logger.error(`[ ## SYNC > SIGNAL ### ] getUserCount Error ${err}`);
+    })
+
+    //아무도 없으면 방 삭제
+    if(userCount == 0){
+      logger.info(`[ ## SIGNAL > SYNC ### ] delete room : ${reqData.roomId}`);
+      await syncFn.delRoom(redisInfo, reqData.roomId).catch(err => {
+        logger.error(`[ ## SYNC > SIGNAL ### ] delRoom Error ${err}`);
+      });
     }
 
     await syncFn.setUserInfoBySocketId(redisInfo, socketId, userData).catch(err => {
@@ -660,15 +670,27 @@ exports.disconnect = async (socket, redisInfo, socketIo) => {
           });
 
         }
-        console.log("dongwook ::: ", socketIo.adapter.rooms[roomId]);
+
+        
+        //Sync Server에서 방 나가기
+        await syncFn.exitRoom(redisInfo, roomId, socketId).catch(err => {
+          logger.error(`[ ## SYNC > SIGNAL ### ] exitRoom Error ${err}`);
+        })
+        
+        //인원 수 체크
+        userCount = await syncFn.getUserCount(redisInfo, roomData.roomId).catch(err => {
+          logger.error(`[ ## SYNC > SIGNAL ### ] getUserCount Error ${err}`);
+        })
+        console.log(`check(exit) : ${userCount}`)
+        
         //아무도 없으면 방 삭제
-        if(!socketIo.adapter.rooms[roomId] || (socketIo.adapter.rooms[roomId].length === 0)){
-          logger.info(`[ ## SIGNAL > SYNC ### ] delete room : ${roomId}`);
-          await syncFn.delRoom(redisInfo, roomId).catch(err => {
+        if(userCount == 0){
+          logger.info(`[ ## SIGNAL > SYNC ### ] delete room : ${roomData.roomId}`);
+          await syncFn.delRoom(redisInfo, roomData.roomId).catch(err => {
             logger.error(`[ ## SYNC > SIGNAL ### ] delRoom Error ${err}`);
           });
         }
-
+        
         socket.leave(roomData.roomId);
       })
     }
