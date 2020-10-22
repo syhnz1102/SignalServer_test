@@ -86,7 +86,7 @@ exports.roomJoin = async (data, sessionId, redis, socket, socketIo) => {
     await core.register(socket, redis);
     await core.roomJoin(socketIo, socket, redis, { roomId: data.roomId });
     await sync.setUserInfo(redis, uid, sessionId, 'multi', 'ccc', data.roomId, data.cpCode || config.license.code);
-    let enteredRoomInfo = await sync.enterRoom(redis, { uid, sessionId, roomId: data.roomId, userName: 'unknown' });
+    let enteredRoomInfo = await sync.enterRoom(redis, { uid, sessionId, roomId: data.roomId, userName: '익명' });
 
     signalSocket.emit(sessionId, {
       eventOp: 'RoomJoin',
@@ -228,7 +228,7 @@ exports.videoRoomJoin = async (data, sessionId, redis, socket, socketIo) => {
     await core.register(socket, redis);
     await core.roomJoin(socketIo, socket, redis, { roomId: data.roomId });
     await sync.setUserInfo(redis, uid, sessionId, 'multi', 'ccc', data.roomId, data.cpCode || config.license.code);
-    let enteredRoomInfo = await sync.enterRoom(redis, { uid, sessionId, roomId: data.roomId, userName: data.userName ? data.userName:'unknown', multiType: 'Y' });
+    let enteredRoomInfo = await sync.enterRoom(redis, { uid, sessionId, roomId: data.roomId, userName: data.userName ? data.userName:'익명', multiType: 'Y' });
 
     //처음 입장하는 경우
     if(data.host){
@@ -315,7 +315,7 @@ exports.sdp = async (data, sessionId, redis, socket) => {
         await charging(sessionId, {
           cpCode: data.cpCode,
           userId: data.userId,
-          userName: userData.userName?userData.userName:'name',
+          userName: userData.userName?userData.userName:'익명',
           clientIp: socket.request.connection._peername.address,
           roomId: data.roomId,
           startDate: userData.P2P_START,
@@ -864,7 +864,7 @@ exports.exitRoom = async (socket, redis, sessionId) => {
     await charging(sessionId, {
       cpCode: cp,
       userId: userId,
-      userName: o.userName?o.userName:'name',
+      userName: o.userName?o.userName:'익명',
       clientIp: socket.request.connection._peername.address,
       roomId: roomId,
       startDate: start,
