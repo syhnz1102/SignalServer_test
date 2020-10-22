@@ -39,6 +39,12 @@ exports.roomCreate = async (redisInfo, reqData) => {
     //요청한 roomId로 room 생성
     else {
 
+      let roomIdValidation = await commonFn.roomIdValidation(reqData.roomId);
+      if(roomIdValidation !== '200'){
+        resolve({code: roomIdValidation})
+        return;
+      }
+
       roomData = await syncFn.getRoomDetail(redisInfo, reqData.roomId).catch(err => {
         logger.error(`[ ## SYNC > SIGNAL ### ] getRoomDetail Error ${err}`);
       })
@@ -55,6 +61,9 @@ exports.roomCreate = async (redisInfo, reqData) => {
       }
 
     }
+
+    //수용인원 정보 추가
+    roomData.capacity = reqData.capacity;
 
     await syncFn.setRoom(redisInfo, roomData.roomId, roomData).catch(err => {
       logger.error(`[ ## SYNC > SIGNAL ### ] setRoom Error ${err}`);
@@ -101,6 +110,20 @@ exports.roomJoin = async (socketIo, socket, redisInfo, reqData) => {
       return;
     }
 
+    //현재 socket room 인원
+    let userCount = await syncFn.getUserCount(redisInfo, roomData.roomId).catch(err => {
+      logger.error(`[ ## SYNC > SIGNAL ### ] getUserCount Error ${err}`);
+    })
+
+
+    //room 수용인원을 초과할 경우
+    if(roomData.capacity <= userCount){
+      resolve({
+        code: '444'
+      })
+      return;
+    }
+
     //socket join
     socket.join(roomData.roomId);
 
@@ -117,15 +140,8 @@ exports.roomJoin = async (socketIo, socket, redisInfo, reqData) => {
       logger.error(`[ ## SYNC > SIGNAL ### ] enterRoom Error ${err}`);
     })
 
-    let userCount = await syncFn.getUserCount(redisInfo, roomData.roomId).catch(err => {
-      logger.error(`[ ## SYNC > SIGNAL ### ] getUserCount Error ${err}`);
-    })
-
-    console.log(`check(join) : ${userCount}`);
-
-
     //응답 메시지에 인원수 추가
-    roomJoinMsg.count = userCount;
+    roomJoinMsg.count = userCount+1;
 
     //data return
     resolve(roomJoinMsg);
@@ -186,7 +202,7 @@ exports.exitRoom = async (socketIo, socket, redisInfo, reqData) => {
     })
 
     //아무도 없으면 방 삭제
-    if(userCount == 0){
+    if(userCount === 0){
       logger.info(`[ ## SIGNAL > SYNC ### ] delete room : ${reqData.roomId}`);
       await syncFn.delRoom(redisInfo, reqData.roomId).catch(err => {
         logger.error(`[ ## SYNC > SIGNAL ### ] delRoom Error ${err}`);
@@ -372,7 +388,7 @@ exports.sdpVideoRoom = async (socketId, redisInfo, reqData) => {
     let handleId;
 
     //camera / screen 구분해서 handleId 가져오기
-    if(reqData.type == 'cam'){
+    if(reqData.type === 'cam'){
       handleId = userData.roomInfo[reqData.roomId].camHandleId;
     } else {
       handleId = userData.roomInfo[reqData.roomId].screenHandleId;
@@ -390,7 +406,7 @@ exports.sdpVideoRoom = async (socketId, redisInfo, reqData) => {
 
     let sendData = {}
 
-    if(reqData.sdp.type == 'offer' || reqData.sdp.type == 'OFFER'){
+    if(reqData.sdp.type === 'offer' || reqData.sdp.type === 'OFFER'){
       janusResData[socketId] = await fn_janus.sendOffer(roomData.mediaServerUrl, handleId, reqData.sdp, true, socketId).catch(err => {
         logger.error(`[ ## JANUS > SIGNAL ## ] sendOffer : ${err}`);
         delete janusResData[socketId];
@@ -400,18 +416,19 @@ exports.sdpVideoRoom = async (socketId, redisInfo, reqData) => {
         return;
       });
 
-      if(janusResData[socketId].janus === 'error'){
+      if(janusResData[socketId] && janusResData[socketId].janus === 'error'){
         delete janusResData[socketId];
         resolve({
           code: '570'
         });
-        return;
       }
 
-      sendData.sdp = janusResData[socketId].jsep;
+      else if(janusResData[socketId] && janusResData[socketId].jsep){
+        sendData.sdp = janusResData[socketId].jsep;
+        resolve(sendData);
+      }
 
-      resolve(sendData);
-    } else if (reqData.sdp.type == 'answer' || reqData.sdp.type == 'ANSWER') {
+    } else if (reqData.sdp.type === 'answer' || reqData.sdp.type === 'ANSWER') {
       janusResData[socketId] = await fn_janus.sendAnswerForSubscriber(roomData.mediaServerUrl, reqData.pluginId, roomData.roomId, reqData.sdp, socketId).catch(err => {
         logger.error(`[ ## JANUS > SIGNAL ## ] sendAnswerForSubscriber : ${err}`);
         delete janusResData[socketId];
@@ -671,18 +688,17 @@ exports.disconnect = async (socket, redisInfo, socketIo) => {
 
         }
 
-        
         //Sync Server에서 방 나가기
         await syncFn.exitRoom(redisInfo, roomId, socketId).catch(err => {
           logger.error(`[ ## SYNC > SIGNAL ### ] exitRoom Error ${err}`);
         })
-        
+
         //인원 수 체크
         userCount = await syncFn.getUserCount(redisInfo, roomData.roomId).catch(err => {
           logger.error(`[ ## SYNC > SIGNAL ### ] getUserCount Error ${err}`);
         })
         console.log(`check(exit) : ${userCount}`)
-        
+
         //아무도 없으면 방 삭제
         if(userCount == 0){
           logger.info(`[ ## SIGNAL > SYNC ### ] delete room : ${roomData.roomId}`);
@@ -690,7 +706,7 @@ exports.disconnect = async (socket, redisInfo, socketIo) => {
             logger.error(`[ ## SYNC > SIGNAL ### ] delRoom Error ${err}`);
           });
         }
-        
+
         socket.leave(roomData.roomId);
       })
     }

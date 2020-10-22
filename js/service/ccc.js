@@ -12,7 +12,8 @@ const common = require('../utils/common')
 
 exports.createRoom = async (data, sessionId, redis, socket) => {
   const room = await utils.makeId(8);
-  const createResult = await core.roomCreate(redis, { roomId: room });
+  let capacity = data.capacity?parseInt(data.capacity):25;
+  const createResult = await core.roomCreate(redis, { roomId: room, capacity: capacity});
   if (createResult.code) {
     signalSocket.emit(sessionId, {
       eventOp: 'CreateRoom',
@@ -34,6 +35,38 @@ exports.createRoom = async (data, sessionId, redis, socket) => {
   await transaction(sessionId, {
     opCode: 'CreateRoom',
     roomId: room,
+    cpCode: data.cpCode || config.license.code,
+    clientIp: socket.request.connection._peername.address,
+    resultCode: '200'
+  })
+}
+
+exports.createRoomWithRoomId = async (data, sessionId, redis, socket) => {
+
+  let capacity = data.capacity?parseInt(data.capacity):24;
+  const createResult = await core.roomCreate(redis, { roomId: data.roomId?data.roomId:'error', capacity: capacity});
+
+  if (createResult.code && createResult.code !== '200') {
+    signalSocket.emit(sessionId, {
+      eventOp: 'createRoomWithRoomId',
+      code: createResult.code,
+      message: await common.codeToMsg(parseInt(createResult.code)),
+      roomId: data.roomId,
+    }, data);
+    return false;
+  }
+
+  await sync.createRoom(redis, data.roomId);
+  signalSocket.emit(sessionId, {
+    eventOp: 'createRoomWithRoomId',
+    code: '200',
+    message: await common.codeToMsg(200),
+    roomId: data.roomId
+  }, data);
+
+  await transaction(sessionId, {
+    opCode: 'createRoomWithRoomId',
+    roomId: data.roomId,
     cpCode: data.cpCode || config.license.code,
     clientIp: socket.request.connection._peername.address,
     resultCode: '200'
@@ -84,7 +117,30 @@ exports.roomJoin = async (data, sessionId, redis, socket, socketIo) => {
   } else {
     // Room 있는 경우
     await core.register(socket, redis);
-    await core.roomJoin(socketIo, socket, redis, { roomId: data.roomId });
+    let coreRoomJoin = await core.roomJoin(socketIo, socket, redis, { roomId: data.roomId });
+
+    //입장이 불가능 한 경우
+    if(coreRoomJoin.code !== '200'){
+      signalSocket.emit(sessionId, {
+        eventOp: 'RoomJoin',
+        code: coreRoomJoin.code,
+        message: await common.codeToMsg(parseInt(coreRoomJoin.code)),
+        userId: uid,
+        roomId: data.roomId,
+      }, data);
+
+      await transaction(sessionId, {
+        opCode: 'RoomJoin',
+        roomId: data.roomId,
+        cpCode: data.cpCode || config.license.code,
+        clientIp: socket.request.connection._peername.address,
+        userId: uid,
+        resultCode: coreRoomJoin.code
+      })
+
+      return;
+    }
+
     await sync.setUserInfo(redis, uid, sessionId, 'multi', 'ccc', data.roomId, data.cpCode || config.license.code);
     let enteredRoomInfo = await sync.enterRoom(redis, { uid, sessionId, roomId: data.roomId, userName: '익명' });
 
