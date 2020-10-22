@@ -248,48 +248,22 @@ const messageProcessor = async (message, socketId) => {
     else if(messageObj.janus == 'event' && messageObj.plugindata && messageObj.plugindata.data && messageObj.plugindata.data.videoroom && (messageObj.plugindata.data.videoroom == 'talking' || messageObj.plugindata.data.videoroom == 'stopped-talking')){
         let roomId = messageObj.plugindata.data.room;
 
-        // publisher로 join 했던 handle id 값으로 user 정보 가져오기
-        // syncData[messageObj.sender] = await syncFn.getUserInfoByHandleId(redisInfo, messageObj.sender).catch(err => {
-        //     logger.error(`[ ## SYNC > SIGNAL ### ] getUserInfoByHandleId error : ${err}`);
-        // });
+        // messageObj.sender : 메시지를 받을 대상 (handle_id)
+        // messageObj.plugindata.data.id : 말하고 있는 사람 (feed_id)
 
-        // let uidForCCC = await syncFn.getUserInfoBySocketId(redisInfo, syncData[messageObj.sender].socketId).catch(err => {
-        //     logger.error(`[ ## SYNC > SIGNAL ### ] getUserInfoBySocketId error : ${err}`);
-        // });
-
-        // let uid = messageObj.plugindata.data.id;
-        // console.log('@@@' + uid);
-
-        // 1. sender => 메시지를 받을 대상으로 추측.. (handle_id)
-        // 2. data.id => 말하고 있는 사람 (feed_id)
-
-        // sender를 가지고 getUserInfoByHandleId를 가져와서 socketid를 뽑아
-        // socketid를 가지고 getUserInfoBySocketId를 해서 roomId를 뽑아
-        // roomid 안에 있는 (rooms_info 테이블)에서 USERS의 socketId를 다 뽑아
-        // 뽑은 모든 사람들의 socketid를 가지고 USER_INFO_BY_SOCKET_ID 테이블에서 camFeedId를 다 뽑아 []
-        // 그 배열에서 받은 plugindata.data.id와 같은 feed id를 찾으면 걔가 말하고 있다는 뜻.
-
-        // FEED_ID를 가지고 관리를 하면 위에 과정 중에서 아래 4개를 안해도됨.
-
-
+        //1. socketId of sender
         syncData[messageObj.sender] = await syncFn.getUserInfoByHandleId(redisInfo, messageObj.sender).catch(err => {
                 logger.error(`[ ## SYNC > SIGNAL ### ] getUserInfoByHandleId error : ${err}`);
             });
 
-        // console.log('@@@ userInfo ------------------------ ');
-        // console.log(JSON.stringify(userInfo));
 
-        console.log('@@@ socketId of receiver: ' + syncData[messageObj.sender].socketId);
-        console.log('@@@ feedId of speaker : ' + messageObj.plugindata.data.id);
-
-
-        // 말하는 사람의 feedId로 userId 구하기
+        // 2. get userId By speker's feedId
+        // todo : redis에 gerUserInfoByFeedId 개발 시 변경 필요
+        // roomDetail 내에 있는 모든 USER의 sessionId(==socketId)를 구해, 각 user의 정보를 가져옴. 
+        // 각 user 정보에는 참여중인 room정보와 camFeedId를 들고있음. speaker의 feedId와 동일한 것을 찾음.
         let roomDetail = await syncFn.getRoomDetail(redisInfo, roomId).catch(err => {
             logger.error(`[ ## SYNC > SIGNAL ### ] getRoomDetail error : ${err}`);
         });
-
-        // console.log('@@@ roomDetail ------------------------ ');
-        // console.log(JSON.stringify(roomDetail));
 
         let usersData = new Array;
         for (user in roomDetail.USERS){
@@ -300,31 +274,25 @@ const messageProcessor = async (message, socketId) => {
             usersData.push(u);
         }
 
-        // console.log('@@@ all users in room : ' + JSON.stringify(usersData));
-
-        let speaker;
+        let uidSpeaker;
         for ( userObj in usersData ){
             if(usersData[userObj].roomInfo[roomId].camFeedId === messageObj.plugindata.data.id){
-                speaker = usersData[userObj].ID;
-                // console.log('@@@ Speaker!!!! : ' + speaker);
+                uidSpeaker = usersData[userObj].ID;
             }
         }
 
-        if (speaker){
+        if (uidSpeaker){
             //client에 보낼 message
             let data = {
                 signalOp:"Presence",
                 action : "talking",
-                who: speaker,
+                who: uidSpeaker,
                 talking: messageObj.plugindata.data.videoroom === 'talking'
             }
 
-            //room에 화자 정보 전송
+            //client에게 화자 정보 전송
             sendToClient(syncData[messageObj.sender].socketId, data);
         }
-
-        //room에 화자 정보 전송
-        // sendToRoom(syncData[messageObj.sender].socketId, roomId, data);
     }
 
     //slowlink event
@@ -452,7 +420,7 @@ exports.createRoom = (url, handleId, publisherNumber, socketId, roomId) => {
                 publishers : publisherNumber,
                 room       : roomId,
                 audiolevel_event: true,
-                audio_level_average: 70,
+                audio_level_average: 30,
                 record : false,
                 rec_dir: '/home/kpoint/justinjung/janus/share/janus/recordings/'
             }
