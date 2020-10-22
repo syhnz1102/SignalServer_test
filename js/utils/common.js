@@ -87,6 +87,12 @@ exports.codeToMsg = code => {
       case 442:
         resolve('Already exist in the room.');
         return;
+      case 443:
+        resolve('It already exist.');
+        return;
+      case 444:
+        resolve(`It's already full.`);
+        return;
       case 445:
         resolve('The maximum data has been exceeded.');
         return;

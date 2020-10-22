@@ -49,12 +49,10 @@ exports.coreConnector = {
     const base = await serverInfo.getCore();
     if(url === 'license/licenseValidation'){
       logger.log('info', `[ ### SIGNAL > CORE ## ] license check ${body.cpCode}`);
-      body = {
-        cpCode : body.cpCode,
-        authKey : body.authKey
-      }
     } else if(url === 'charge/setChargingData') {
       logger.log('info', `[ ### SIGNAL > CORE ## ] charging check ${JSON.stringify(body)}`);
+    } else {
+      logger.log('info', `[ ### SIGNAL > CORE ## ] transaction insert ${JSON.stringify(body.opCode)}`);
     }
     return new Promise((resolve, reject) => {
 
