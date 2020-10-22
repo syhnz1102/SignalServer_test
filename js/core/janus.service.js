@@ -249,28 +249,82 @@ const messageProcessor = async (message, socketId) => {
         let roomId = messageObj.plugindata.data.room;
 
         // publisher로 join 했던 handle id 값으로 user 정보 가져오기
-        syncData[messageObj.sender] = await syncFn.getUserInfoByHandleId(redisInfo, messageObj.sender).catch(err => {
-            logger.error(`[ ## SYNC > SIGNAL ### ] getUserInfoByHandleId error : ${err}`);
-        });
+        // syncData[messageObj.sender] = await syncFn.getUserInfoByHandleId(redisInfo, messageObj.sender).catch(err => {
+        //     logger.error(`[ ## SYNC > SIGNAL ### ] getUserInfoByHandleId error : ${err}`);
+        // });
 
-        let uidForCCC = await syncFn.getUserInfoBySocketId(redisInfo, syncData[messageObj.sender].socketId).catch(err => {
-            logger.error(`[ ## SYNC > SIGNAL ### ] getUserInfoBySocketId error : ${err}`);
-        });
+        // let uidForCCC = await syncFn.getUserInfoBySocketId(redisInfo, syncData[messageObj.sender].socketId).catch(err => {
+        //     logger.error(`[ ## SYNC > SIGNAL ### ] getUserInfoBySocketId error : ${err}`);
+        // });
 
         // let uid = messageObj.plugindata.data.id;
         // console.log('@@@' + uid);
 
-        //client에 보낼 message
-        let data = {
-            signalOp:"Presence",
-            action : "talking",
-            who: uidForCCC && uidForCCC.ID? uidForCCC.ID:syncData[messageObj.sender].socketId,
-            talking: messageObj.plugindata.data.videoroom === 'talking'
+        // 1. sender => 메시지를 받을 대상으로 추측.. (handle_id)
+        // 2. data.id => 말하고 있는 사람 (feed_id)
+
+        // sender를 가지고 getUserInfoByHandleId를 가져와서 socketid를 뽑아
+        // socketid를 가지고 getUserInfoBySocketId를 해서 roomId를 뽑아
+        // roomid 안에 있는 (rooms_info 테이블)에서 USERS의 socketId를 다 뽑아
+        // 뽑은 모든 사람들의 socketid를 가지고 USER_INFO_BY_SOCKET_ID 테이블에서 camFeedId를 다 뽑아 []
+        // 그 배열에서 받은 plugindata.data.id와 같은 feed id를 찾으면 걔가 말하고 있다는 뜻.
+
+        // FEED_ID를 가지고 관리를 하면 위에 과정 중에서 아래 4개를 안해도됨.
+
+
+        syncData[messageObj.sender] = await syncFn.getUserInfoByHandleId(redisInfo, messageObj.sender).catch(err => {
+                logger.error(`[ ## SYNC > SIGNAL ### ] getUserInfoByHandleId error : ${err}`);
+            });
+
+        // console.log('@@@ userInfo ------------------------ ');
+        // console.log(JSON.stringify(userInfo));
+
+        console.log('@@@ socketId of receiver: ' + syncData[messageObj.sender].socketId);
+        console.log('@@@ feedId of speaker : ' + messageObj.plugindata.data.id);
+
+
+        // 말하는 사람의 feedId로 userId 구하기
+        let roomDetail = await syncFn.getRoomDetail(redisInfo, roomId).catch(err => {
+            logger.error(`[ ## SYNC > SIGNAL ### ] getRoomDetail error : ${err}`);
+        });
+
+        // console.log('@@@ roomDetail ------------------------ ');
+        // console.log(JSON.stringify(roomDetail));
+
+        let usersData = new Array;
+        for (user in roomDetail.USERS){
+            let u = await syncFn.getUserInfoBySocketId(redisInfo, roomDetail.USERS[user].sessionId).catch(err => {
+                logger.error(`[ ## SYNC > SIGNAL ### ] getUserInfoBySocketId error : ${err}`);
+            });
+
+            usersData.push(u);
+        }
+
+        // console.log('@@@ all users in room : ' + JSON.stringify(usersData));
+
+        let speaker;
+        for ( userObj in usersData ){
+            if(usersData[userObj].roomInfo[roomId].camFeedId === messageObj.plugindata.data.id){
+                speaker = usersData[userObj].ID;
+                // console.log('@@@ Speaker!!!! : ' + speaker);
+            }
+        }
+
+        if (speaker){
+            //client에 보낼 message
+            let data = {
+                signalOp:"Presence",
+                action : "talking",
+                who: speaker,
+                talking: messageObj.plugindata.data.videoroom === 'talking'
+            }
+
+            //room에 화자 정보 전송
+            sendToClient(syncData[messageObj.sender].socketId, data);
         }
 
         //room에 화자 정보 전송
         // sendToRoom(syncData[messageObj.sender].socketId, roomId, data);
-
     }
 
     //slowlink event
