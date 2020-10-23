@@ -420,7 +420,7 @@ exports.createRoom = (url, handleId, publisherNumber, socketId, roomId) => {
                 publishers : publisherNumber,
                 room       : roomId,
                 audiolevel_event: true,
-                audio_level_average: 30,
+                audio_level_average: 50,
                 record : false,
                 rec_dir: '/home/kpoint/justinjung/janus/share/janus/recordings/'
             }
