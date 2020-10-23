@@ -10,8 +10,16 @@ let keepAliveCheck = {};
 module.exports = (socket, signalSocketio, redisInfo) => {
 
   //keepAlive
-  keepAliveCheck[socket.id] = setTimeout(() => {
+  keepAliveCheck[socket.id] = setTimeout(async () => {
+
+    //socket disconnect 알림
+    // signalSocket.emit(sessionId, {
+    //   code: '446',
+    //   message: await common.codeToMsg(446)
+    // });
+
     // socket.disconnect(true);
+
     logger.log('info', `[Socket : KeepAlive] KeepAlive Timeout!, Session Id is : ${socket.id}`);
   }, 60000)
 
@@ -29,27 +37,29 @@ module.exports = (socket, signalSocketio, redisInfo) => {
       data.sdp.sdp = "sdp info...";
       logger.log('info', `[ ### WEB > SIGNAL ### ] ${JSON.stringify(data)}`);
       data.sdp.sdp = sdpReqData;
-    } else if(data.eventOp !== 'KeepAlive'){
-      logger.log('info', `[ ### WEB > SIGNAL ### ] ${JSON.stringify(data)}`);
     }
+    //KeepAlive 아닌 op인 경우 라이센스 체크
+    else if(data.eventOp !== 'KeepAlive'){
+      logger.log('info', `[ ### WEB > SIGNAL ### ] ${JSON.stringify(data)}`);
 
-    const isChecked = await checker(sessionId, data);
-    if (!isChecked) {
-      signalSocket.emit(sessionId, {
-        code: '413',
-        message: await common.codeToMsg(413)
-      });
+      const isChecked = await checker(sessionId, data);
+      if (!isChecked) {
+        signalSocket.emit(sessionId, {
+          code: '413',
+          message: await common.codeToMsg(413)
+        });
 
-      if(data.eventOp === 'KeepAlive'){
-        socket.disconnect(true)
-        logger.log('info', `[Socket : KeepAlive] Invalid license, Session Id is : ${socket.id}`);
+        return false;
       }
-      return false;
     }
 
     switch (data.eventOp || data.signalOp) {
       case 'CreateRoom':
         await cccService.createRoom(data, sessionId, redisInfo, socket);
+        break;
+
+      case 'CreateRoomWithRoomId':
+        await cccService.createRoomWithRoomId(data, sessionId, redisInfo, socket);
         break;
 
       case 'DestroyRoom':
