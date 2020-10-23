@@ -50,7 +50,7 @@ exports.init = (_signalSocketio, _redisInfo) => {
 
 //소켓 연결
 const createWebSocket = (url, socketId, resolve, reject) => {
-    let ws = new WebSocket('ws://' + url +':7011', 'janus-protocol');
+    let ws = new WebSocket('ws://' + url +':3561', 'janus-protocol');
 
     //message 수신 되었을 경우
     ws.onmessage = (message) => {
@@ -584,7 +584,7 @@ exports.listParticipants = (url, handleId, socketId, janusRoomId) => {
 //Janus-gateway health check method
 exports.pingMediaServer = async (url) => {
     return new Promise((resolve, reject) => {
-        let ws = new WebSocket('ws://' + url +':7011', 'janus-protocol');
+        let ws = new WebSocket('ws://' + url +':3561', 'janus-protocol');
 
         let timeCheck = setTimeout(()=> {
             resolve(false)
