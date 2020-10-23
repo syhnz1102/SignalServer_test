@@ -259,7 +259,7 @@ const messageProcessor = async (message, socketId) => {
 
         // 2. get userId By speker's feedId
         // todo : redis에 gerUserInfoByFeedId 개발 시 변경 필요
-        // roomDetail 내에 있는 모든 USER의 sessionId(==socketId)를 구해, 각 user의 정보를 가져옴. 
+        // roomDetail 내에 있는 모든 USER의 sessionId(==socketId)를 구해, 각 user의 정보를 가져옴.
         // 각 user 정보에는 참여중인 room정보와 camFeedId를 들고있음. speaker의 feedId와 동일한 것을 찾음.
         let roomDetail = await syncFn.getRoomDetail(redisInfo, roomId).catch(err => {
             logger.error(`[ ## SYNC > SIGNAL ### ] getRoomDetail error : ${err}`);
@@ -419,7 +419,7 @@ exports.createRoom = (url, handleId, publisherNumber, socketId, roomId) => {
                 request    : 'create',
                 publishers : publisherNumber,
                 room       : roomId,
-                audiolevel_event: true,
+                audiolevel_event: false,
                 audio_level_average: 50,
                 record : false,
                 rec_dir: '/home/kpoint/justinjung/janus/share/janus/recordings/'
