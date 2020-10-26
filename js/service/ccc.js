@@ -253,7 +253,7 @@ exports.roomJoin = async (data, sessionId, redis, socket, socketIo) => {
           signalSocket.broadcast(socket, data.roomId, {
             signalOp: 'Presence',
             members: enteredRoomInfo.USERS,
-            who: uid,
+            userId: uid,
             action: "join"
           });
 
@@ -342,7 +342,7 @@ exports.videoRoomJoin = async (data, sessionId, redis, socket, socketIo) => {
         signalSocket.broadcast(socket, data.roomId, {
           signalOp: 'Presence',
           members: enteredRoomInfo.USERS,
-          who: uid,
+          userId: uid,
           action: "join"
         });
       } catch (err) {
