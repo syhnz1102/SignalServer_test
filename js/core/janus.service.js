@@ -286,7 +286,7 @@ const messageProcessor = async (message, socketId) => {
             let data = {
                 signalOp:"Presence",
                 action : "talking",
-                who: uidSpeaker,
+                userId: uidSpeaker,
                 talking: messageObj.plugindata.data.videoroom === 'talking'
             }
 
@@ -419,7 +419,7 @@ exports.createRoom = (url, handleId, publisherNumber, socketId, roomId) => {
                 request    : 'create',
                 publishers : publisherNumber,
                 room       : roomId,
-                audiolevel_event: false,
+                audiolevel_event: true,
                 audio_level_average: 50,
                 record : false,
                 rec_dir: '/home/kpoint/justinjung/janus/share/janus/recordings/'
