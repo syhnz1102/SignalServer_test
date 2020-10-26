@@ -17,6 +17,7 @@ exports.reqNo = function() {
     });
 }
 
+
 //서버시간을 리턴.
 exports.getDate = () => {
     return new Promise(((resolve, reject) => {
@@ -56,16 +57,17 @@ exports.usageTime = (start, end) => {
     }))
 }
 
-//현재시간에 random 문자열 추가 하여 room id 생성
+//8자리 숫자로 room id 생성
 exports.getRoomId = function(){
-	let roomIdObj = this;
-	return new Promise(function(resolved, rejected){
-		const newDate = roomIdObj.getDate();
-		roomIdObj.randomText().then(function(text){
-			const roomId = newDate + '-' + text;
-			resolved(roomId);
-		});
-	});
+    return new Promise(function(resolved, rejected){
+        const num = "0123456789";
+        let result = '';
+        for (let i = 0; i < 8; i++) {
+            result += num.charAt(Math.floor(Math.random() * num.length));
+        }
+
+        resolved(result);
+    });
 };
 
 //Media Server cpu 최소 사용 server 찾는 method
@@ -94,15 +96,13 @@ exports.getLightestMediaServer = (mediaServerUrls, redisInfo) => {
 }
 
 //roomId 유효성 검사
-exports.roomIdValidation = (roomId = 0) => {
+exports.roomIdValidation = (roomId = "0") => {
     return new Promise(resolve => {
-
-        roomId = parseInt(roomId);
-        let length = Math.floor(Math.log10(roomId)) + 1;
-        if(length !== 8){
-            resolve('422');
-        } else {
+        let validation = new RegExp('^[0-9]+$');
+        if(validation.test(roomId) && roomId.length === 8){
             resolve('200');
+        } else {
+            resolve('422');
         }
     })
 }
