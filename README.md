@@ -1,6 +1,9 @@
 ## KnowledgeTalk 4.0 
 ### Signal Server Release Note
 
+#### v4.0.7 (20/10/26)
+ - roomId validation 수정(앞자리가 0 일때 올바르지 않은 roomId로 체크 되었던 현상)
+ 
 #### v4.0.6 (20/10/23)
  - CreateRoomWithRoomId 추가
  - CreateRoom Op 제한 인원 수 parameter 추가(capacity)
